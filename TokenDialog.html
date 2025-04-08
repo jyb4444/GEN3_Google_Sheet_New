@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <style>
+        .container {
+          display: flex;
+          flex-direction: column;
+          flex-grow: 1;
+          height: 100%; 
+          padding: 20px;
+          font-family: Arial, sans-serif;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input[type="file"], input[type="submit"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: auto;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+
+        input[type="submit"] {
+          margin-top: auto; /* 将 Submit 按钮推到表单底部 */
+          background-color: #4CAF50;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .loader {
+            display: none; /* Initially hidden */
+            position: fixed;
+            left: 40%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #4CAF50;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            z-index: 1000;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Initially hide the second dropdown */
+        #dropdown2Container {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <form id="dialogForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label for="dropdown1">Step 1: Project Options:</label>
+                <select id="dropdown1" name="dropdown1">
+                    <option value="">Select a project</option>
+                </select>
+            </div>
+
+            <div id="dropdown2Container" class="form-group">
+                <label for="dropdown2">Step 2: Study Options:</label>
+                <select id="dropdown2" name="dropdown2">
+                    <option value="">Select a study</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="dropdown3">Step 3: Target Node Options:</label>
+                <select id="dropdown3" name="dropdown3">
+                    <option value="">Select a node</option>
+                </select>
+            </div>
+
+            <!-- <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="checkbox1" name="checkbox1" onchange="updateLabel()">
+                    <label for="checkbox1" id="checkboxLabel">Updating existing record</label>
+                </div>
+            </div> -->
+
+            <input type="submit" value="Submit" class="submit-btn">
+        </form>
+    </div>
+
+    <div class="loader" id="loader"></div>
+
+    <script>
+        function initializeProjectDropdown() {
+            try {
+                const projectData = <?!= projectData ?>;
+                const nodeData = <?!= targetNodeData ?>;
+                
+                const dropdown1 = document.getElementById('dropdown1');
+                const dropdown3 = document.getElementById('dropdown3');
+
+                if (!dropdown1 || !dropdown3) {
+                    throw new Error('Dropdowns not found in DOM');
+                }
+                const projectList = projectData.data.project;
+
+                while (dropdown1.options.length > 1) {
+                    dropdown1.remove(1);
+                }
+
+                while (dropdown3.options.length > 1) {
+                    dropdown3.remove(1);
+                }
+
+                projectList.forEach((project, index) => {
+                    const option = document.createElement('option');
+                    option.value = project.code;
+                    option.text = `${project.code} - ${project.description || 'No description'}`;
+                    dropdown1.add(option);
+                });
+
+                nodeData.forEach((node, index) => {
+                    const option = document.createElement('option');
+                    option.value = node;
+                    option.text = node;
+                    dropdown3.add(option);
+                });
+
+
+            } catch (error) {
+                alert('Error loading data: ' + error.message);
+            }
+        }
+
+        window.onload = function(){
+          initializeProjectDropdown();
+            google.script.run
+            .withSuccessHandler(function(result) {
+              console.log("Authorization successful");
+            })
+            .withFailureHandler(function(error) {
+              alert("Authorization required. Please accept the permissions when prompted.");
+            })
+            .authorizeScript();
+        }
+
+        document.getElementById('dropdown1').addEventListener('change', function() {
+          const selectedProject = this.value;
+          const loader = document.getElementById('loader');
+          const dropdown2Container = document.getElementById('dropdown2Container');
+          dropdown2Container.style.display = 'none'; // Hide the second dropdown initially
+          
+          if (selectedProject) {
+                loader.style.display = 'block'; // Show loader while fetching data
+                const studyList = <?!= studyData ?>;
+
+                google.script.run
+                    .withSuccessHandler(function(studyList) {
+                        updateStudyDropdown(studyList);
+                        loader.style.display = 'none'; // Hide loader once data is loaded
+                        dropdown2Container.style.display = 'block'; // Show the second dropdown
+                    })
+                    .withFailureHandler(function(error) {
+                        alert('Error fetching study list: ' + error.message);
+                        loader.style.display = 'none'; // Hide loader in case of error
+                    })
+                    .filteredStudy(studyList, selectedProject);
+            }
+        });
+
+        function updateStudyDropdown(studyList) {
+            const dropdown2 = document.getElementById('dropdown2');
+
+            while (dropdown2.options.length > 1) {
+                dropdown2.remove(1);
+            }
+
+            studyList.forEach(study => {
+                const option = document.createElement('option');
+                option.value = study.submitter_id;
+                option.text = study.submitter_id + " - " + study.study_description;;
+                dropdown2.add(option);
+            });
+        }
+
+      function handleSubmit(event) {
+        event.preventDefault();
+        
+        const formData = {
+            projectCode: document.getElementById('dropdown1').value,
+            studyCode: document.getElementById('dropdown2').value,
+            nodeType: document.getElementById('dropdown3').value,
+            // isCreated: document.getElementById('checkbox1').checked
+        };
+        
+        document.querySelector('.submit-btn').disabled = true;
+        document.getElementById('loader').style.display = 'block';
+
+        google.script.run
+            .withSuccessHandler(function(response) {
+                try {
+                    const data = response;
+                    
+                    google.script.run
+                    .withSuccessHandler(function(response){
+                      document.getElementById('loader').style.display = 'none';
+                      google.script.host.close();
+                    })
+                    .withFailureHandler(function(error){
+                      document.getElementById('loader').style.display = 'none';
+                    })
+                    .displayResults(formData.nodeType, data.data)
+
+                } catch (error) {
+                    alert('Error processing response: ' + error.message);
+                    document.getElementById('loader').style.display = 'none';
+                    document.querySelector('.submit-btn').disabled = false;
+                }
+            })
+            .withFailureHandler(function(error) {
+                if (error.message && error.message.includes('PERMISSION_DENIED')) {
+                    document.getElementById('loader').style.display = 'none';
+                    alert('Authorized access required. Please close this window, refresh the page, then try again and accept the permission request.');
+                } else {
+                    alert('Error: ' + error.message);
+                }
+                document.querySelector('.submit-btn').disabled = false;
+            })
+            .fetchDataByConditions(formData.projectCode, formData.studyCode, formData.nodeType);
+        }
+
+    </script>
+</body>
+</html>
