@@ -3,6 +3,7 @@ function onOpen() {
   DriveApp.getRootFolder();
   ui.createMenu('Gen3')
     .addItem('Create Gen3 Template', 'openTokenDialog')
+    .addItem('Save as .tsv file', 'openSaveDailog')
     .addToUi();
 }
 
@@ -36,21 +37,19 @@ function openTokenDialog() {
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Toxdatacommons Update/Create');
 }
 
-// function checkFileAccess() {
-//   try {
-//     const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i';
-//     const file = DriveApp.getFileById(fileId);
-//     // 尝试获取文件名而不是序列化整个对象
-//     Logger.log(`文件名: ${file.getName()}, 文件大小: ${file.getSize()}`);
-//   } catch (e) {
-//     Logger.log('文件访问错误: ' + e.message);
-//   }
-// }
+function openSaveDailog(){
+  var template = HtmlService.createTemplateFromFile('SaveDialog');
+  var htmlOutput = template.evaluate()
+    .setWidth(400)
+    .setHeight(400);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Save and Submit');
+}
 
 // Function to get the auth provider using the credentials JSON
 function getAuthProvider() {
   try {
-    const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
+    const fileId = '15QBC5TA9Hg7fVat-Xjra_cr6xAV6L0Wi'; //keji dev.toxdatacommon
+    // const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
     // const fileId = '1_hF1BLLni4ipHiPld77L6EcIEu2TA0pu'; 
 
     let file;
@@ -77,7 +76,7 @@ function getAuthProvider() {
       // Logger.log(JSON.stringify(jsonData))
       // SpreadsheetApp.getUi().alert(JSON.stringify(jsonData))
       return {
-        endpoint: "https://toxdatacommons.com",
+        endpoint: "https://dev.toxdatacommons.com",
         accessToken: jsonData.api_key,
         keyId: jsonData.key_id
       };
@@ -122,37 +121,6 @@ function getAccessToken(authProvider) {
         throw error;
     }
 }
-
-// function executeGraphQLQuery(authProvider, queryString) {
-//   const accessToken = getAccessToken(authProvider)
-//   const url = `${authProvider.endpoint}/guppy/graphql`; 
-
-//   const payload = {
-//     query: queryString
-//   };
-
-//   const options = {
-//     method: 'POST',
-//     contentType: 'application/json',
-//     headers: {
-//       'Authorization': `Bearer ${accessToken}`,
-//       'Content-Type': 'application/json' 
-//     },
-//     payload: JSON.stringify(payload),
-//     muteHttpExceptions: true
-//   };
-
-//   const response = UrlFetchApp.fetch(url, options);
-
-//   if (response.getResponseCode() === 200) {
-//     const rawResponse = response.getContentText();
-//     const normalizedData = normalizeResponse(rawResponse);
-//     return JSON.stringify(normalizedData, null, 2)
-//   } else {
-//     Logger.log("Error: " + response.getContentText());
-//     throw new Error("GraphQL query failed with status: " + response.getResponseCode());
-//   }
-// }
 
 // Function to execute a GraphQL query
 function executeGraphQLQuery(authProvider, queryString) {

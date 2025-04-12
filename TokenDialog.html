@@ -230,7 +230,7 @@
             .withSuccessHandler(function(response) {
                 try {
                     const data = response;
-                    
+
                     google.script.run
                     .withSuccessHandler(function(response){
                       document.getElementById('loader').style.display = 'none';
@@ -239,7 +239,7 @@
                     .withFailureHandler(function(error){
                       document.getElementById('loader').style.display = 'none';
                     })
-                    .displayResults(formData.nodeType, data.data)
+                    .displayResults(formData.nodeType, data[0], data[1], data[2])
 
                 } catch (error) {
                     alert('Error processing response: ' + error.message);

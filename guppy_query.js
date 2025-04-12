@@ -25,8 +25,6 @@ Gen3Query.prototype.query = function (
     };
   }
 
-
-
   if (first + offset > 10000) { // ElasticSearch 限制
     const sortFields = Object.entries(sortObject || {}).map(([field, val]) => {
       return { [field]: val };
@@ -146,7 +144,7 @@ function fetchDataByConditions(project, study, node) {
   let fieldsList = traceToRoot(node);
   // SpreadsheetApp.getUi().alert(JSON.stringify(query))
   // fields= [`_${node}_id`, "subject_submitter_id", "study_submitter_id"],
-
+  
   const data = query.query(
     data_type= "treatment_project_ids",
     fields = fieldsList,
@@ -160,7 +158,11 @@ function fetchDataByConditions(project, study, node) {
     null,
     sort_object={"submitter_id": "asc"},
   );
+  const data2 = getNodeDictionary(node);
+  const properties = data2.properties;
+  const hiddenProperties = data2.systemProperties;
 
-  return data;
+  
+  return [data, properties, hiddenProperties];
 }
 

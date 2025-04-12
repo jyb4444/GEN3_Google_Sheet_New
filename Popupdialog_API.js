@@ -90,6 +90,37 @@ function fetchDataByNode(node) {
   renderAdditionalPropertiesToSheet(JSON.parse(response));
 }
 
+function getNodeDictionary(node="treatment") {
+  try {
+    const authProvider = getAuthProvider();
+    const url = `${authProvider.endpoint}/api/v0/submission/_dictionary/${node}`;
+    
+    const options = {
+      method: 'GET',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': `Bearer ${authProvider.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    
+    if (responseCode !== 200) {
+      throw new Error(`API request failed with status code: ${responseCode}`);
+    }
+    
+    const jsonResponse = JSON.parse(response.getContentText());
+    
+    return jsonResponse;
+  } catch (error) {
+    console.error(`Error in getNodeDictionary: ${error.message}`);
+    throw new Error(`Failed to get node dictionary: ${error.message}`);
+  }
+}
+
 function getAllNode(){
   const authProvider = getAuthProvider();
   const url = `${authProvider.endpoint}/api/v0/submission/_dictionary/_all`;
@@ -174,4 +205,30 @@ function traceToRoot(nodeName="study") {
 
     Logger.log(`Final path: ${path}`);
     return path.reverse()
+}
+
+function saveToGoogleDrive() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getActiveSheet();
+    var dataRange = sheet.getDataRange();
+    var values = dataRange.getValues();
+
+    var tsvData = values.map(function(row) {
+      return row.join('\t');
+    }).join('\n');
+
+    var fileName = sheet.getName() + ".tsv";
+    var blob = Utilities.newBlob(tsvData, "text/tab-separated-values", fileName);
+
+    var file = DriveApp.createFile(blob);
+
+    var fileUrl = file.getUrl();
+    Logger.log("TSV file saved to Drive: " + fileUrl);
+    return "TSV file '" + fileName + "' saved successfully to your Google Drive. You can find it here: " + fileUrl;
+
+  } catch (error) {
+    Logger.log("Error saving TSV file: " + error);
+    return "Error saving TSV file: " + error; 
+  }
 }

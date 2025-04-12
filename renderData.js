@@ -385,56 +385,84 @@
 // validators: null
 // }
 
-function displayResults(node, data) {
-  try{
+function getPropertiesName(properties){
+  return Object.keys(properties)
+}
+
+function displayResults(node, data, properties, hiddenProperties) {
+  try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    if(node === "study"){
+    if (node === "study") {
       sheet.clear();
       clearRulesNotesAndDropdowns(sheet);
-      // deleteEmptyRows(sheet);
-      fetchDataByNode(node)
-      return; 
+      fetchDataByNode(node);
+      return;
     }
-    
-    const treatmentProjectIds = data.treatment_project_ids;
+
+    const treatmentProjectIds = data.data.treatment_project_ids;
+    const checkHiddenProperties = new Set(hiddenProperties);
 
     if (!treatmentProjectIds || treatmentProjectIds.length === 0) {
       Logger.log("No data available.");
       return;
     }
     let fieldsList = traceToRoot(node);
-    const columnNames = fieldsList;
-    // SpreadsheetApp.getUi().alert(JSON.stringify(treatmentProjectIds))
+    const columnNames1 = fieldsList;
+    const columnNames2 = Object.keys(properties).filter((item) => !checkHiddenProperties.has(item)); 
+    const columnNames = columnNames1.concat(columnNames2);
+
     sheet.clear();
     clearRulesNotesAndDropdowns(sheet);
     sheet.appendRow(columnNames);
 
+    // 设置下拉菜单和注释
+    columnNames2.forEach((propertyName, index) => {
+      const columnIndex = columnNames1.length + index + 1; // 计算 columnNames2 对应的列索引
+      const propertyConfig = properties[propertyName];
+
+      // 设置下拉菜单
+      if (propertyConfig && propertyConfig.enum && propertyConfig.enum.length > 0) {
+        const rule = SpreadsheetApp.newDataValidation()
+          .requireValueInList(propertyConfig.enum)
+          .setAllowInvalid(false)
+          .build();
+        sheet.getRange(2, columnIndex, sheet.getMaxRows() - 1).setDataValidation(rule);
+      }
+
+      // 设置注释
+      if (propertyConfig && propertyConfig.term && propertyConfig.term.description) {
+        sheet.getRange(1, columnIndex).setNote(propertyConfig.term.description);
+      }
+    });
+
     const rows = [];
     const checkDuplicate = new Set();
-    if(Object.keys(treatmentProjectIds[0]).length === 1){
+    if (Object.keys(treatmentProjectIds[0]).length === 1) {
       treatmentProjectIds.forEach((item) => {
         const { study_submitter_id } = item;
         if (checkDuplicate.has(study_submitter_id.join(" "))) {
           return;
         }
-        rows.push([
-            study_submitter_id.join(" ") 
-          ]);
-
+        const rowData = [study_submitter_id.join(" ")];
+        columnNames2.forEach(prop => {
+          rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
+        });
+        rows.push(rowData);
         checkDuplicate.add(study_submitter_id.join(" "));
       });
-    }else{
+    } else {
       treatmentProjectIds.forEach((item) => {
         const { subject_submitter_id, study_submitter_id } = item;
         if (checkDuplicate.has(subject_submitter_id.join(","))) {
           return;
         }
-        
+
         subject_submitter_id.forEach((subjectId) => {
-          rows.push([
-            subjectId,                   
-            study_submitter_id.join(", ") 
-          ]);
+          const rowData = [subjectId, study_submitter_id.join(", ")];
+          columnNames2.forEach(prop => {
+            rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
+          });
+          rows.push(rowData);
         });
 
         checkDuplicate.add(subject_submitter_id.join(","));
@@ -442,21 +470,17 @@ function displayResults(node, data) {
     }
 
     if (rows.length > 0) {
-      const actualColumnCount = rows[0].length;
-      // sheet.getRange(2, 1, rows.length, columnNames.length).setValues(rows);
-      sheet.getRange(2, 1, rows.length, actualColumnCount).setValues(rows);
+      sheet.getRange(2, 1, rows.length, columnNames.length).setValues(rows);
     }
 
     deleteEmptyRows(sheet);
 
     sheet.autoResizeColumns(1, columnNames.length);
-    // fetchDataByNode(node)
     Logger.log("Data rendered to sheet successfully.");
-  }catch(err){
+  } catch (err) {
     const ui = SpreadsheetApp.getUi();
     ui.alert(`Error: ${err.message}\nDetails: ${err.stack}`);
   }
-  
 }
 
 function deleteEmptyRows(sheet) {
@@ -517,3 +541,13 @@ function clearRulesNotesAndDropdowns(sheet) {
 
   Logger.log("Cleared all content, notes, and data validations.");
 }
+
+// function clearRulesNotesAndDropdowns(sheet) {
+//   sheet.clearDataValidations(); // 清除数据验证规则 (包括下拉菜单)
+//   const maxCols = sheet.getMaxColumns();
+//   const headerRange = sheet.getRange(1, 1, 1, maxCols);
+//   const notes = headerRange.getNotes();
+//   const newNotes = notes.map(row => row.map(() => '')); // 创建一个相同大小的空注释数组
+//   headerRange.setNotes(newNotes); // 清除标题行的注释
+// }
+

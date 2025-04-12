@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <style>
+    body, html {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        padding: 30px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .prompt {
+        font-size: 1.2em;
+        color: #333;
+        margin-bottom: 50px;
+    }
+
+    .button-container {
+        display: flex;
+        gap: 40px;
+        justify-content: center;
+    }
+
+    .button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+    }
+
+    .submit-button {
+        background-color: #5cb85c;
+        color: white;
+    }
+
+    .submit-button:hover {
+        background-color: #4cae4c;
+    }
+
+    .cancel-button {
+        background-color: #d9534f;
+        color: white;
+    }
+
+    .cancel-button:hover {
+        background-color: #c9302c;
+    }
+  </style>
+</head>
+<body>
+    <div class="container">
+        <div class="prompt">Save as '.tsv' file and Ready to submit to Gen3</div>
+        <div class="button-container">
+            <button class="button submit-button" onclick="handleSubmit()">Submit</button>
+            <button class="button cancel-button" onclick="google.script.host.close()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+      function handleSubmit() {
+        google.script.run
+          .withSuccessHandler(function(response) {
+              console.log("Submission result:", response);
+              alert(response); 
+              if (response.startsWith("TSV file")) { 
+                  google.script.host.close();
+              }
+          })
+          .withFailureHandler(function(error) {
+              console.error("Submission failed:", error);
+              alert("Submission failed. Please try again. Error: " + error); 
+          })
+          .saveToGoogleDrive();
+        }
+
+    </script>
+  </body>
+</html>
