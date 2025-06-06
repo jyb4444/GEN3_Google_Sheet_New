@@ -3,7 +3,8 @@ function onOpen() {
   DriveApp.getRootFolder();
   ui.createMenu('Gen3')
     .addItem('Create Gen3 Template', 'openTokenDialog')
-    .addItem('Save as .tsv file', 'openSaveDailog')
+    .addItem('Save as .tsv file', 'openSaveDialog')
+    .addItem('Upload Metadata', 'createUploadMetadataSheet')
     .addToUi();
 }
 
@@ -37,7 +38,7 @@ function openTokenDialog() {
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Toxdatacommons Update/Create');
 }
 
-function openSaveDailog(){
+function openSaveDialog(){
   var template = HtmlService.createTemplateFromFile('SaveDialog');
   var htmlOutput = template.evaluate()
     .setWidth(400)
@@ -110,8 +111,12 @@ function getAccessToken(authProvider) {
         const response = UrlFetchApp.fetch(url, options);
         Logger.log(authProvider)
         Logger.log(url)
+        // SpreadsheetApp.getUi().alert(url)
+        // SpreadsheetApp.getUi().alert(JSON.stringify(authProvider))
+        // SpreadsheetApp.getUi().alert(response.getResponseCode())
         if (response.getResponseCode() === 200) {
             const tokenData = JSON.parse(response.getContentText());
+            // SpreadsheetApp.getUi().alert(JSON.stringify(tokenData))
             return tokenData.access_token;
         } else {
             throw new Error("Failed to get access token");
@@ -287,4 +292,40 @@ function testNormalize() {
         Logger.log("Error during normalization:");
         Logger.log(error);
     }
+}
+
+/**
+ * Creates a new sheet named "Upload_Metadata_Sheet" and sets the header row.
+ */
+function createUploadMetadataSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = "Upload_Metadata_Sheet"; 
+
+  const headers = [
+    "file_name",
+    "file_size",
+    "file_source_repository",
+    "data_category",
+    "data_format",
+    "data_type",
+    "object_id",
+    "state_comments"
+  ];
+
+  let newSheet = spreadsheet.getSheetByName(sheetName);
+
+  newSheet = spreadsheet.insertSheet(sheetName); // 创建新 Sheet
+
+  const headerRange = newSheet.getRange(1, 1, 1, headers.length);
+
+  headerRange.setValues([headers]); // setValues 需要一个二维数组
+
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#f3f3f3');
+
+  newSheet.autoResizeColumns(1, headers.length);
+
+  spreadsheet.setActiveSheet(newSheet);
+
+  SpreadsheetApp.getUi().alert(`The new "${sheetName}" sheet has been created.`);
 }

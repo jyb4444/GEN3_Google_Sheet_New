@@ -389,6 +389,110 @@ function getPropertiesName(properties){
   return Object.keys(properties)
 }
 
+function getParentNode(node){
+  const allPaths = [
+    [{"project": "projects"}, {"study": "studies"}, {"subject": "subjects"}, {"treatment": "treatment"}]
+  ]
+  for(let arr of allPaths){
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i][node]) {
+        return Object.values(arr[i - 1])[0];
+      }
+    }
+  }
+  return "Do not find the node in all paths."
+}
+
+function findSubmitterIdsForNode(currentData, targetNodeName, results = []) {
+  if (!currentData) {
+    return results; // 边界条件：如果当前数据为 null/undefined，则返回
+  }
+
+  // 如果当前数据是数组，遍历数组元素
+  if (Array.isArray(currentData)) {
+    currentData.forEach((item) => {
+      // 递归调用自身，因为数组的每个元素可能都是一个对象，包含我们要找的节点
+      findSubmitterIdsForNode(item, targetNodeName, results);
+    });
+  }
+  // 如果当前数据是对象
+  else if (typeof currentData === "object") {
+    // 1. 检查当前对象是否就是我们要找的 targetNodeName
+    // 这适用于 targetNodeName 是一个对象内部的属性名，且该属性的值可能包含 submitter_id
+    // 比如 currentData 是 study 对象，targetNodeName 是 subjects
+    if (currentData[targetNodeName]) {
+      // 如果 targetNodeName 对应的值是数组，遍历它
+      if (Array.isArray(currentData[targetNodeName])) {
+        currentData[targetNodeName].forEach((nestedItem) => {
+          if (nestedItem && nestedItem.submitter_id) {
+            results.push(nestedItem.submitter_id);
+          }
+          // 递归查找嵌套更深的 submitter_id
+          findSubmitterIdsForNode(nestedItem, targetNodeName, results); // 例如 subjects 内部可能还有 treatments
+        });
+      }
+      // 如果 targetNodeName 对应的值是对象，直接检查 submitter_id
+      else if (
+        typeof currentData[targetNodeName] === "object" &&
+        currentData[targetNodeName] !== null
+      ) {
+        if (currentData[targetNodeName].submitter_id) {
+          results.push(currentData[targetNodeName].submitter_id);
+        }
+        // 递归查找更深的 submitter_id
+        findSubmitterIdsForNode(
+          currentData[targetNodeName],
+          targetNodeName,
+          results
+        );
+      }
+    }
+
+    // 2. 检查当前对象本身是否包含 submitter_id，并且它可能是一个父节点
+    // 这适用于 targetNodeName 像 'studies' 这样直接在顶层数组中
+    // 并且数组的每个元素 (study) 本身就含有 submitter_id
+    if (
+      currentData.submitter_id &&
+      Object.keys(currentData).includes(targetNodeName)
+    ) {
+      // 确保这个 submitter_id 确实是属于这个 'parentNode' 级别的
+      // 这里需要根据实际情况调整逻辑
+      // 对于 'studies'，我们已经通过 Array.isArray(data.studies) 处理了
+      // 如果 targetNodeName 是 currentData 的一个键，并且 currentData 有 submitter_id，
+      // 那么这个 submitter_id 就应该被考虑
+      // 然而，更常见的是，submitter_id 属于 targetNodeName 指向的那个对象或数组的元素
+      // 所以我们更关注 currentData[targetNodeName] 的内容
+    }
+
+    // 遍历当前对象的所有属性，继续递归查找
+    for (const key in currentData) {
+      if (Object.prototype.hasOwnProperty.call(currentData, key)) {
+        findSubmitterIdsForNode(currentData[key], targetNodeName, results);
+      }
+    }
+  }
+
+  return results;
+}
+
+function generateParentSubmitterIdColumnName(pluralNodeName) {
+  // 简单规则：移除末尾的 's' (不处理不规则复数，例如 "analysis" -> "analyses")
+  let singularNodeName = "";
+  if (pluralNodeName.endsWith("ies")) {
+    // 处理以 'ies' 结尾的复数，如 studies -> study
+    singularNodeName = pluralNodeName.slice(0, -3) + "y";
+  } else if (pluralNodeName.endsWith("s")) {
+    // 移除末尾的 's'
+    singularNodeName = pluralNodeName.slice(0, -1);
+  } else {
+    // 如果不是以 's' 或 'ies' 结尾，假设本身就是单数，或者需要更复杂的映射
+    singularNodeName = pluralNodeName;
+    console.warn(`Warning: '${pluralNodeName}' does not end with 's' or 'ies'. Assuming it's already singular or needs custom handling.`);
+  }
+
+  return `${singularNodeName}_submitter_id`;
+}
+
 function displayResults(node, data, properties, hiddenProperties) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -398,14 +502,16 @@ function displayResults(node, data, properties, hiddenProperties) {
       fetchDataByNode(node);
       return;
     }
-
-    const treatmentProjectIds = data.data.treatment_project_ids;
+    const parentNode = getParentNode(node)
+    SpreadsheetApp.getUi().alert(parentNode)
+    const treatmentProjectIds = data.data.project_with_treatments;
     const checkHiddenProperties = new Set(hiddenProperties);
 
     if (!treatmentProjectIds || treatmentProjectIds.length === 0) {
       Logger.log("No data available.");
       return;
     }
+
     let fieldsList = traceToRoot(node);
     const columnNames1 = fieldsList;
     const columnNames2 = Object.keys(properties).filter((item) => !checkHiddenProperties.has(item)); 
@@ -435,42 +541,57 @@ function displayResults(node, data, properties, hiddenProperties) {
       }
     });
 
+    const parentNodeId = generateParentSubmitterIdColumnName(parentNode)
+    columnNames.unshift(parentNodeId)
+    SpreadsheetApp.getUi().alert(JSON.stringify(columnNames))
+
     const rows = [];
     const checkDuplicate = new Set();
-    if (Object.keys(treatmentProjectIds[0]).length === 1) {
-      treatmentProjectIds.forEach((item) => {
-        const { study_submitter_id } = item;
-        if (checkDuplicate.has(study_submitter_id.join(" "))) {
-          return;
-        }
-        const rowData = [study_submitter_id.join(" ")];
-        columnNames2.forEach(prop => {
-          rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
-        });
-        rows.push(rowData);
-        checkDuplicate.add(study_submitter_id.join(" "));
-      });
-    } else {
-      treatmentProjectIds.forEach((item) => {
-        const { subject_submitter_id, study_submitter_id } = item;
-        if (checkDuplicate.has(subject_submitter_id.join(","))) {
-          return;
-        }
+    SpreadsheetApp.getUi().alert(JSON.stringify(treatmentProjectIds))
 
-        subject_submitter_id.forEach((subjectId) => {
-          const rowData = [subjectId, study_submitter_id.join(", ")];
-          columnNames2.forEach(prop => {
-            rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
-          });
-          rows.push(rowData);
-        });
-
-        checkDuplicate.add(subject_submitter_id.join(","));
-      });
+    if(Object.keys(treatmentProjectIds[0]).length >= 1){
+      treatmentProjectIds.forEach((item) => {
+        const ids = findSubmitterIdsForNode(item, parentNode);
+        SpreadsheetApp.getUi().alert("")
+        SpreadsheetApp.getUi().alert(JSON.stringify(ids))
+        rows.push(ids)
+      })
     }
 
+    // if (Object.keys(treatmentProjectIds[0]).length === 1) {
+    //   treatmentProjectIds.forEach((item) => {
+    //     const { study_submitter_id } = item;
+    //     if (checkDuplicate.has(study_submitter_id.join(" "))) {
+    //       return;
+    //     }
+    //     const rowData = [study_submitter_id.join(" ")];
+    //     columnNames2.forEach(prop => {
+    //       rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
+    //     });
+    //     rows.push(rowData);
+    //     checkDuplicate.add(study_submitter_id.join(" "));
+    //   });
+    // } else {
+    //   treatmentProjectIds.forEach((item) => {
+    //     const { subject_submitter_id, study_submitter_id } = item;
+    //     if (checkDuplicate.has(subject_submitter_id.join(","))) {
+    //       return;
+    //     }
+
+    //     subject_submitter_id.forEach((subjectId) => {
+    //       const rowData = [subjectId, study_submitter_id.join(", ")];
+    //       columnNames2.forEach(prop => {
+    //         rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
+    //       });
+    //       rows.push(rowData);
+    //     });
+
+    //     checkDuplicate.add(subject_submitter_id.join(","));
+    //   });
+    // }
+
     if (rows.length > 0) {
-      sheet.getRange(2, 1, rows.length, columnNames.length).setValues(rows);
+      sheet.getRange(2, 1, rows.length, 1).setValues(rows);
     }
 
     deleteEmptyRows(sheet);

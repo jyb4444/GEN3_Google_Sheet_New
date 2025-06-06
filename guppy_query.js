@@ -47,11 +47,11 @@ Gen3Query.prototype.query = function (
   
   const queryString = `query($filter: JSON){
       ${dataType}(first: ${first}, offset: ${offset}, sort: [${sortString}], accessibility: ${accessibility}, filter: $filter) {
-        ${fields.join(",\n")}
+        ${fields ? fields.join(",\n") : new Array(0)}
       }
     }
-
   `;
+  
   let variables = { filter: filterObject };
 
   return this.graphqlQuery(queryString, variables);
@@ -73,9 +73,10 @@ Gen3Query.prototype.graphqlQuery = function (queryString, variables) {
     }),
     muteHttpExceptions: true
   };
-
+  // SpreadsheetApp.getUi().alert(url)
+  // SpreadsheetApp.getUi().alert("payload: " + JSON.stringify(options.payload))
   const response = UrlFetchApp.fetch(url, options);
-
+  // SpreadsheetApp.getUi().alert(response.getResponseCode())
   if (response.getResponseCode() === 200) {
     const rawResponse = response.getContentText();
     const normalizedData = this.normalizeResponse(rawResponse);
@@ -88,7 +89,8 @@ Gen3Query.prototype.graphqlQuery = function (queryString, variables) {
 
 Gen3Query.prototype.getAccessToken = function () {
   try {
-    const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
+    const fileId = '15QBC5TA9Hg7fVat-Xjra_cr6xAV6L0Wi'; //keji dev.toxdatacommon
+    // const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
     // const fileId = '1_hF1BLLni4ipHiPld77L6EcIEu2TA0pu'; 
 
     let file;
@@ -143,21 +145,46 @@ function fetchDataByConditions(project, study, node) {
   const query = new Gen3Query(authProvider);
   let fieldsList = traceToRoot(node);
   // SpreadsheetApp.getUi().alert(JSON.stringify(query))
-  // fields= [`_${node}_id`, "subject_submitter_id", "study_submitter_id"],
-  
-  const data = query.query(
-    data_type= "treatment_project_ids",
-    fields = fieldsList,
-    first=100,
-    offset = 0,
-    filters= {
-      "project_id": "MSUSRC-" + project,
-      "study_submitter_id": study,
-      
-    },
-    null,
-    sort_object={"submitter_id": "asc"},
+  // const fields= [`_${node}_id`, "subject_submitter_id", "study_submitter_id"],
+  let fields = ['_project_id']
+  // SpreadsheetApp.getUi().alert(JSON.stringify(fieldsList))
+  // treatment_project_ids
+
+  graphql_query_string = `{
+    project_with_treatments {
+      _project_id
+      _project_with_treatments_id
+      auth_resource_path
+      dose_amount
+      dose_amount_unit
+      node_id
+      project_code
+      project_id
+      test_article_name
+      studies {
+        _study_id
+        submitter_id
+        subjects {
+          _subject_id
+          submitter_id
+          treatments {
+            _treatment_id
+            dose_amount
+            dose_amount_unit
+            route
+            test_article_name
+            submitter_id
+          }
+        }
+      }
+    }
+  }`
+
+  const data = query.graphqlQuery(
+    query_string=graphql_query_string
   );
+  SpreadsheetApp.getUi().alert(JSON.stringify(data))
+
   const data2 = getNodeDictionary(node);
   const properties = data2.properties;
   const hiddenProperties = data2.systemProperties;
