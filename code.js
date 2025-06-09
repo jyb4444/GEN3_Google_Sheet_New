@@ -1,7 +1,7 @@
 function onOpen() {  
   var ui = SpreadsheetApp.getUi();
   DriveApp.getRootFolder();
-  ui.createMenu('Gen3')
+  ui.createMenu('ToxDataCommons')
     .addItem('Create Gen3 Template', 'openTokenDialog')
     .addItem('Save as .tsv file', 'openSaveDialog')
     .addItem('Upload Metadata', 'createUploadMetadataSheet')
@@ -21,20 +21,36 @@ function authorizeScript() {
 
 // Main function to open the dialog and request the toke
 function openTokenDialog() {
+  // Fetch list of available projects
   const projectData = fetchProjectList();
+  
+  // Fetch list of available studies
   const studyData = fetchStudyList();
+  
+  // Fetch target node data as JSON and parse it into an object
   const targetNodeData = JSON.parse(fetchTargetNodeList());
+  
+  // Extract the first key from the target node data (assumed to be the relevant category)
   const key = Object.keys(targetNodeData.data)[0];
+  
+  // Get an array of node type IDs from the target node data
+  // TODO: Also include the descripion (key [1])
   const nodetypes = targetNodeData.data[key].map((ele) => ele.id)
 
+  // Create an HTML template from the file 'TokenDialog'
   var template = HtmlService.createTemplateFromFile('TokenDialog');
+  
+  // Pass the fetched data into the template to be used in the HTML
   template.projectData = projectData;  
   template.studyData = studyData;
-  template.targetNodeData = JSON.stringify(nodetypes);
+  template.targetNodeData = JSON.stringify(nodetypes); // Convert to string for HTML use
   
+  // Evaluate and configure the dialog dimensions
   var htmlOutput = template.evaluate()
     .setWidth(400)
     .setHeight(400);
+	
+  // Display the dialog to the user
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Toxdatacommons Update/Create');
 }
 
@@ -47,6 +63,15 @@ function openSaveDialog(){
 }
 
 // Function to get the auth provider using the credentials JSON
+// TODO: Try the following:
+// 1. Set key as user property (user pastes json value) 
+//   PropertiesService.getUserProperties().setProperty('token', 'abc123');
+//   let token = PropertiesService.getUserProperties().getProperty('token');
+// 2. Cache method (user pastes again
+//   const cache = CacheService.getUserCache(); // or getScriptCache()
+//   cache.put('mySessionKey', 'mySessionValue', 1800); // Expires in 30 min
+//   let val = cache.get('mySessionKey');
+// 3. Set as fixed drive path (e.g., must be gdrive://gen3creds/credentials.json)
 function getAuthProvider() {
   try {
     const fileId = '15QBC5TA9Hg7fVat-Xjra_cr6xAV6L0Wi'; //keji dev.toxdatacommon
@@ -127,6 +152,7 @@ function getAccessToken(authProvider) {
     }
 }
 
+// TODO: Move Gen3-SDK functions into jsGen3-SDK.js
 // Function to execute a GraphQL query
 function executeGraphQLQuery(authProvider, queryString) {
   const accessToken = getAccessToken(authProvider)

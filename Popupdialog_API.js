@@ -21,7 +21,7 @@ function fetchStudyList() {
   const authProvider = getAuthProvider();
 
   const queryTxt = `{
-    study (first: 100) {
+    study (first: 10) {
       submitter_id
       study_description
       projects {
@@ -52,6 +52,8 @@ function filteredStudy(studyList, projectId){
   }
 }
 
+// This function runs a GraphQL query to get the names of each node 
+// use to populate the dialog box. It also includes the description.
 function fetchTargetNodeList(){
   const authProvider = getAuthProvider();
 
@@ -90,6 +92,7 @@ function fetchDataByNode(node) {
   renderAdditionalPropertiesToSheet(JSON.parse(response));
 }
 
+// TODO: Move to guppy_query.js? Seems to fit better there.
 function getNodeDictionary(node="treatment") {
   try {
     const authProvider = getAuthProvider();

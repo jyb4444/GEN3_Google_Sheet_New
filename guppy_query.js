@@ -146,10 +146,24 @@ function fetchDataByConditions(project, study, node) {
   let fieldsList = traceToRoot(node);
   // SpreadsheetApp.getUi().alert(JSON.stringify(query))
   // const fields= [`_${node}_id`, "subject_submitter_id", "study_submitter_id"],
+
   let fields = ['_project_id']
   // SpreadsheetApp.getUi().alert(JSON.stringify(fieldsList))
   // treatment_project_ids
 
+
+  graphql_query_string = `{
+    treatment_project_ids {
+      _treatment_id
+      _treatment_project_ids_id
+      auth_resource_path
+      node_id
+      project_id
+      submitter_id
+      subject_submitter_id
+    }
+  }`
+  /*
   graphql_query_string = `{
     project_with_treatments {
       _project_id
@@ -179,6 +193,7 @@ function fetchDataByConditions(project, study, node) {
       }
     }
   }`
+  */
 
   const data = query.graphqlQuery(
     query_string=graphql_query_string

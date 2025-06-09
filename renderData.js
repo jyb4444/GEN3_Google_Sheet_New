@@ -496,20 +496,27 @@ function generateParentSubmitterIdColumnName(pluralNodeName) {
 function displayResults(node, data, properties, hiddenProperties) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+	
+	// Check if not is study 
+	// TODO: Check if we still need this. Previously here because study had no parent node (project)
     if (node === "study") {
       sheet.clear();
       clearRulesNotesAndDropdowns(sheet);
       fetchDataByNode(node);
       return;
     }
+	
     const parentNode = getParentNode(node)
-    SpreadsheetApp.getUi().alert(parentNode)
+    
+	// TODO: Make sure this key matches. Can we use data.data[0] instead?
     const treatmentProjectIds = data.data.project_with_treatments;
-    const checkHiddenProperties = new Set(hiddenProperties);
+	SpreadsheetApp.getUi().alert(treatmentProjectIds)
+    
+	const checkHiddenProperties = new Set(hiddenProperties);
 
     if (!treatmentProjectIds || treatmentProjectIds.length === 0) {
       Logger.log("No data available.");
-      return;
+      //return;
     }
 
     let fieldsList = traceToRoot(node);
@@ -557,38 +564,6 @@ function displayResults(node, data, properties, hiddenProperties) {
         rows.push(ids)
       })
     }
-
-    // if (Object.keys(treatmentProjectIds[0]).length === 1) {
-    //   treatmentProjectIds.forEach((item) => {
-    //     const { study_submitter_id } = item;
-    //     if (checkDuplicate.has(study_submitter_id.join(" "))) {
-    //       return;
-    //     }
-    //     const rowData = [study_submitter_id.join(" ")];
-    //     columnNames2.forEach(prop => {
-    //       rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
-    //     });
-    //     rows.push(rowData);
-    //     checkDuplicate.add(study_submitter_id.join(" "));
-    //   });
-    // } else {
-    //   treatmentProjectIds.forEach((item) => {
-    //     const { subject_submitter_id, study_submitter_id } = item;
-    //     if (checkDuplicate.has(subject_submitter_id.join(","))) {
-    //       return;
-    //     }
-
-    //     subject_submitter_id.forEach((subjectId) => {
-    //       const rowData = [subjectId, study_submitter_id.join(", ")];
-    //       columnNames2.forEach(prop => {
-    //         rowData.push(item[prop] || ''); // 尝试获取 properties 对应的属性值
-    //       });
-    //       rows.push(rowData);
-    //     });
-
-    //     checkDuplicate.add(subject_submitter_id.join(","));
-    //   });
-    // }
 
     if (rows.length > 0) {
       sheet.getRange(2, 1, rows.length, 1).setValues(rows);
