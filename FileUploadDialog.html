@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .upload-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            border-color: #4285f4;
+            background-color: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #4285f4;
+            background-color: #e8f0fe;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .btn {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background-color: #3367d6;
+        }
+        
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #4285f4;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .file-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .file-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-container">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Click to select a file or drag and drop the file here</div>
+            <div style="font-size: 12px; color: #999;">Supports all file types</div>
+        </div>
+        
+        <input type="file" id="fileInput" class="file-input" multiple>
+        
+        <div class="file-info" id="fileInfo">
+            <div id="fileName"></div>
+            <div class="file-details" id="fileDetails"></div>
+        </div>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="message" id="message"></div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn" id="uploadBtn" onclick="uploadSelectedFiles()" disabled>Upload File</button>
+            <button class="btn" style="background-color: #666;" onclick="google.script.host.close()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileDetails = document.getElementById('fileDetails');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const message = document.getElementById('message');
+        
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFileSelect(e);
+        });
+        
+        function handleFileSelect(e) {
+            const files = e.target.files || e.dataTransfer.files;
+            if (files.length > 0) {
+                selectedFiles = Array.from(files);
+                displayFileInfo();
+                uploadBtn.disabled = false;
+            }
+        }
+        
+        function displayFileInfo() {
+            if (selectedFiles.length === 1) {
+                const file = selectedFiles[0];
+                fileName.textContent = `Selected file: ${file.name}`;
+                fileDetails.textContent = `Size: ${formatFileSize(file.size)} | Type: ${file.type || 'Unkown'}`;
+            } else {
+                fileName.textContent = `Select ${selectedFiles.length} files`;
+                const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+                fileDetails.textContent = `Total Size: ${formatFileSize(totalSize)}`;
+            }
+            fileInfo.style.display = 'block';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function uploadSelectedFiles() {
+            if (selectedFiles.length === 0) return;
+            
+            uploadBtn.disabled = true;
+            progressBar.style.display = 'block';
+            message.style.display = 'none';
+            
+            let uploadedFiles = [];
+            let currentIndex = 0;
+            
+            function uploadNextFile() {
+                if (currentIndex >= selectedFiles.length) {
+                    displayResults(uploadedFiles);
+                    return;
+                }
+                
+                const file = selectedFiles[currentIndex];
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const fileData = e.target.result.split(',')[1]; 
+
+                    const progress = ((currentIndex + 0.5) / selectedFiles.length) * 100;
+                    progressFill.style.width = progress + '%';
+                    
+                    google.script.run
+                        .withSuccessHandler(function(result) {
+                            uploadedFiles.push({
+                                fileName: file.name,
+                                result: result
+                            });
+                            
+                            const progress = ((currentIndex + 1) / selectedFiles.length) * 100;
+                            progressFill.style.width = progress + '%';
+                            
+                            currentIndex++;
+                            uploadNextFile();
+                        })
+                        .withFailureHandler(function(error) {
+                            uploadedFiles.push({
+                                fileName: file.name,
+                                result: {
+                                    success: false,
+                                    message: 'Upload Failed: ' + error.toString()
+                                }
+                            });
+                            currentIndex++;
+                            uploadNextFile();
+                        })
+                        .uploadFileToDrive(fileData, file.name, file.type);
+                };
+                
+                reader.readAsDataURL(file);
+            }
+            
+            uploadNextFile();
+        }
+        
+        function displayResults(uploadedFiles) {
+            progressBar.style.display = 'none';
+            uploadBtn.disabled = false;
+            
+            const successFiles = uploadedFiles.filter(f => f.result.success);
+            const failedFiles = uploadedFiles.filter(f => !f.result.success);
+            
+            let messageText = '';
+            let messageClass = '';
+            
+            if (successFiles.length > 0) {
+                messageText += `Successfully upload ${successFiles.length} files:<br>`;
+                successFiles.forEach(f => {
+                    messageText += `• ${f.fileName} (ID: ${f.result.fileId})<br>`;
+                });
+                messageClass = 'success';
+            }
+            
+            if (failedFiles.length > 0) {
+                if (messageText) messageText += '<br>';
+                messageText += `${failedFiles.length} files upload failed:<br>`;
+                failedFiles.forEach(f => {
+                    messageText += `• ${f.fileName}: ${f.result.message}<br>`;
+                });
+                messageClass = successFiles.length > 0 ? 'success' : 'error';
+            }
+            
+            message.innerHTML = messageText;
+            message.className = 'message ' + messageClass;
+            message.style.display = 'block';
+            
+            selectedFiles = [];
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            uploadBtn.disabled = true;
+        }
+    </script>
+</body>
+</html>

@@ -5,7 +5,33 @@ function onOpen() {
     .addItem('Create Gen3 Template', 'openTokenDialog')
     .addItem('Save as .tsv file', 'openSaveDialog')
     .addItem('Upload Metadata', 'createUploadMetadataSheet')
+    .addItem('Authentication', 'openFileUploadDialog')
     .addToUi();
+}
+
+function deleteAllDrawingsOnActiveSheet() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const drawings = sheet.getDrawings();
+
+  if (drawings.length === 0) {
+    SpreadsheetApp.getUi().alert("当前工作表中没有绘图对象。");
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    '确认删除',
+    '确定要删除当前工作表中的所有 ' + drawings.length + ' 个绘图对象吗？此操作无法撤销。',
+    ui.ButtonSet.YES_NO);
+
+  if (response == ui.Button.YES) {
+    for (let i = drawings.length - 1; i >= 0; i--) {
+      drawings[i].remove();
+    }
+    SpreadsheetApp.getUi().alert("已成功删除所有绘图对象。");
+  } else {
+    SpreadsheetApp.getUi().alert("操作已取消。");
+  }
 }
 
 function authorizeScript() {
@@ -21,29 +47,40 @@ function authorizeScript() {
 
 // Main function to open the dialog and request the toke
 function openTokenDialog() {
-  // Fetch list of available projects
   const projectData = fetchProjectList();
-  
-  // Fetch list of available studies
   const studyData = fetchStudyList();
-  
-  // Fetch target node data as JSON and parse it into an object
   const targetNodeData = JSON.parse(fetchTargetNodeList());
   
-  // Extract the first key from the target node data (assumed to be the relevant category)
   const key = Object.keys(targetNodeData.data)[0];
   
+  const sortedNodes = targetNodeData.data[key].sort((a, b) => {
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
+    }
+    return a.id.localeCompare(b.id);
+  });
+
+  const formattedNodes = sortedNodes.map(node => node.title + "-" + node.description);
+  const nodeIdList = sortedNodes.reduce((acc, cur) => {
+    const obj = {
+      [cur.title] : cur.id
+    }
+    return {...acc, ...obj}
+  }, {})
+
   // Get an array of node type IDs from the target node data
   // TODO: Also include the descripion (key [1])
-  const nodetypes = targetNodeData.data[key].map((ele) => ele.id)
+  // const nodetypes = targetNodeData.data[key].map((ele) => ele.id)
 
   // Create an HTML template from the file 'TokenDialog'
   var template = HtmlService.createTemplateFromFile('TokenDialog');
   
   // Pass the fetched data into the template to be used in the HTML
   template.projectData = projectData;  
+
   template.studyData = studyData;
-  template.targetNodeData = JSON.stringify(nodetypes); // Convert to string for HTML use
+  template.targetNodeData = JSON.stringify(formattedNodes); // Convert to string for HTML use
+  template.nodeIdList = JSON.stringify(nodeIdList)
   
   // Evaluate and configure the dialog dimensions
   var htmlOutput = template.evaluate()
@@ -72,49 +109,50 @@ function openSaveDialog(){
 //   cache.put('mySessionKey', 'mySessionValue', 1800); // Expires in 30 min
 //   let val = cache.get('mySessionKey');
 // 3. Set as fixed drive path (e.g., must be gdrive://gen3creds/credentials.json)
-function getAuthProvider() {
-  try {
-    const fileId = '15QBC5TA9Hg7fVat-Xjra_cr6xAV6L0Wi'; //keji dev.toxdatacommon
-    // const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
-    // const fileId = '1_hF1BLLni4ipHiPld77L6EcIEu2TA0pu'; 
 
-    let file;
-    try {
-      file = DriveApp.getFileById(fileId);
-      Logger.log(file.getName())
-      // SpreadsheetApp.getUi().alert(file.getName())
-      // SpreadsheetApp.getUi().alert(`file:  ${JSON.stringify(file)}`)
-    } catch (e) {
-      Logger.log('The file specified cannot be found. Please check if the file ID is correct.');
-      Logger.log('Current file id: ' + fileId);
-      throw new Error('File access failed 111:' + e.message);
-    }
+// function getAuthProvider() {
+//   try {
+//     const fileId = '15QBC5TA9Hg7fVat-Xjra_cr6xAV6L0Wi'; //keji dev.toxdatacommon
+//     // const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
+//     // const fileId = '1_hF1BLLni4ipHiPld77L6EcIEu2TA0pu'; 
 
-    try {
-      const content = file.getBlob().getDataAsString();
-      // SpreadsheetApp.getUi().alert(JSON.stringify(content))
-      // Logger.log(JSON.stringify(content))
-      const jsonData = JSON.parse(content);
+//     let file;
+//     try {
+//       file = DriveApp.getFileById(fileId);
+//       Logger.log(file.getName())
+//       // SpreadsheetApp.getUi().alert(file.getName())
+//       // SpreadsheetApp.getUi().alert(`file:  ${JSON.stringify(file)}`)
+//     } catch (e) {
+//       Logger.log('The file specified cannot be found. Please check if the file ID is correct.');
+//       Logger.log('Current file id: ' + fileId);
+//       throw new Error('File access failed 111:' + e.message);
+//     }
+
+//     try {
+//       const content = file.getBlob().getDataAsString();
+//       // SpreadsheetApp.getUi().alert(JSON.stringify(content))
+//       // Logger.log(JSON.stringify(content))
+//       const jsonData = JSON.parse(content);
       
-      if (!jsonData.api_key || !jsonData.key_id) {
-        throw new Error('Credentials file is missing a required field (api_key or key_id)');
-      }
-      // Logger.log(JSON.stringify(jsonData))
-      // SpreadsheetApp.getUi().alert(JSON.stringify(jsonData))
-      return {
-        endpoint: "https://dev.toxdatacommons.com",
-        accessToken: jsonData.api_key,
-        keyId: jsonData.key_id
-      };
-    } catch (e) {
-      Logger.log('Parsing of file content failed. Please make sure the file contains valid JSON data');
-      throw new Error('File format error:' + e.message);
-    }
-  } catch (error) {
-    Logger.log('Error Detail：' + error.toString());
-    throw error;
-  }
-}
+//       if (!jsonData.api_key || !jsonData.key_id) {
+//         throw new Error('Credentials file is missing a required field (api_key or key_id)');
+//       }
+//       // Logger.log(JSON.stringify(jsonData))
+//       // SpreadsheetApp.getUi().alert(JSON.stringify(jsonData))
+//       return {
+//         endpoint: "https://dev.toxdatacommons.com",
+//         accessToken: jsonData.api_key,
+//         keyId: jsonData.key_id
+//       };
+//     } catch (e) {
+//       Logger.log('Parsing of file content failed. Please make sure the file contains valid JSON data');
+//       throw new Error('File format error:' + e.message);
+//     }
+//   } catch (error) {
+//     Logger.log('Error Detail：' + error.toString());
+//     throw error;
+//   }
+// }
 
 // Function to get access token using refresh token
 function getAccessToken(authProvider) {
@@ -134,9 +172,7 @@ function getAccessToken(authProvider) {
     
     try {
         const response = UrlFetchApp.fetch(url, options);
-        Logger.log(authProvider)
-        Logger.log(url)
-        // SpreadsheetApp.getUi().alert(url)
+        // SpreadsheetApp.getUi().alert(authProvider.keyId)
         // SpreadsheetApp.getUi().alert(JSON.stringify(authProvider))
         // SpreadsheetApp.getUi().alert(response.getResponseCode())
         if (response.getResponseCode() === 200) {
@@ -157,7 +193,7 @@ function getAccessToken(authProvider) {
 function executeGraphQLQuery(authProvider, queryString) {
   const accessToken = getAccessToken(authProvider)
   const url = `${authProvider.endpoint}/api/v0/submission/graphql/`; 
-
+  
   const payload = {
     query: queryString
   };
@@ -174,7 +210,6 @@ function executeGraphQLQuery(authProvider, queryString) {
   };
 
   const response = UrlFetchApp.fetch(url, options);
-
   if (response.getResponseCode() === 200) {
     const rawResponse = response.getContentText();
     const normalizedData = normalizeResponse(rawResponse);
@@ -320,38 +355,116 @@ function testNormalize() {
     }
 }
 
-/**
- * Creates a new sheet named "Upload_Metadata_Sheet" and sets the header row.
- */
-function createUploadMetadataSheet() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetName = "Upload_Metadata_Sheet"; 
+// /**
+//  * Creates a new sheet named "Upload_Metadata_Sheet" and sets the header row.
+//  */
+// function createUploadMetadataSheet() {
+//   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+//   const sheetName = "Upload_Metadata_Sheet"; 
 
-  const headers = [
-    "file_name",
-    "file_size",
-    "file_source_repository",
-    "data_category",
-    "data_format",
-    "data_type",
-    "object_id",
-    "state_comments"
-  ];
+//   const headers = [
+//     "file_name",
+//     "file_size",
+//     "file_source_repository",
+//     "data_category",
+//     "data_format",
+//     "data_type",
+//     "object_id",
+//     "state_comments"
+//   ];
 
-  let newSheet = spreadsheet.getSheetByName(sheetName);
+//   let newSheet = spreadsheet.getSheetByName(sheetName);
 
-  newSheet = spreadsheet.insertSheet(sheetName); // 创建新 Sheet
+//   newSheet = spreadsheet.insertSheet(sheetName); // 创建新 Sheet
 
-  const headerRange = newSheet.getRange(1, 1, 1, headers.length);
+//   const headerRange = newSheet.getRange(1, 1, 1, headers.length);
 
-  headerRange.setValues([headers]); // setValues 需要一个二维数组
+//   headerRange.setValues([headers]); // setValues 需要一个二维数组
 
-  headerRange.setFontWeight('bold');
-  headerRange.setBackground('#f3f3f3');
+//   headerRange.setFontWeight('bold');
+//   headerRange.setBackground('#f3f3f3');
 
-  newSheet.autoResizeColumns(1, headers.length);
+//   newSheet.autoResizeColumns(1, headers.length);
 
-  spreadsheet.setActiveSheet(newSheet);
+//   spreadsheet.setActiveSheet(newSheet);
 
-  SpreadsheetApp.getUi().alert(`The new "${sheetName}" sheet has been created.`);
+//   SpreadsheetApp.getUi().alert(`The new "${sheetName}" sheet has been created.`);
+// }
+
+function openFileUploadDialog() {
+  var template = HtmlService.createTemplateFromFile('FileUploadDialog');
+  var htmlOutput = template.evaluate()
+    .setWidth(500)
+    .setHeight(400);
+  
+  SpreadsheetApp.getUi()
+    .showModalDialog(htmlOutput, ' Upload File to Google Drive');
 }
+
+// function uploadFileToDrive(fileData, fileName, mimeType) {
+//   try {
+//     // Convert base64 data to blob
+//     var blob = Utilities.newBlob(
+//       Utilities.base64Decode(fileData), 
+//       mimeType, 
+//       fileName
+//     );
+    
+//     // Upload to Google Drive root directory (you can modify for specific folder)
+//     var file = DriveApp.createFile(blob);
+    
+//     // Return file information
+//     return {
+//       success: true,
+//       fileId: file.getId(),
+//       fileName: file.getName(),
+//       fileUrl: file.getUrl(),
+//       message: 'File uploaded successfully!'
+//     };
+    
+//   } catch (error) {
+//     return {
+//       success: false,
+//       message: 'Upload failed: ' + error.toString()
+//     };
+//   }
+// }
+
+// // 4. Optional: Upload to specific folder
+// function uploadFileToSpecificFolder(fileData, fileName, mimeType, folderName) {
+//   try {
+//     var blob = Utilities.newBlob(
+//       Utilities.base64Decode(fileData), 
+//       mimeType, 
+//       fileName
+//     );
+    
+//     // Find or create folder
+//     var folders = DriveApp.getFoldersByName(folderName);
+//     var folder;
+    
+//     if (folders.hasNext()) {
+//       folder = folders.next();
+//     } else {
+//       folder = DriveApp.createFolder(folderName);
+//     }
+    
+//     // Create file in specified folder
+//     var file = folder.createFile(blob);
+    
+//     return {
+//       success: true,
+//       fileId: file.getId(),
+//       fileName: file.getName(),
+//       fileUrl: file.getUrl(),
+//       folderId: folder.getId(),
+//       message: 'File uploaded to folder: ' + folderName
+//     };
+    
+//   } catch (error) {
+//     return {
+//       success: false,
+//       message: 'Upload failed: ' + error.toString()
+//     };
+//   }
+// }

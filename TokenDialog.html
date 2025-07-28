@@ -125,6 +125,7 @@
             try {
                 const projectData = <?!= projectData ?>;
                 const nodeData = <?!= targetNodeData ?>;
+                const nodeIdMatch = <?!= nodeIdList ?>
                 
                 const dropdown1 = document.getElementById('dropdown1');
                 const dropdown3 = document.getElementById('dropdown3');
@@ -144,14 +145,14 @@
 
                 projectList.forEach((project, index) => {
                     const option = document.createElement('option');
-                    option.value = project.code;
-                    option.text = `${project.code} - ${project.description || 'No description'}`;
+                    option.value = project.project_id;
+                    option.text = `${project.project_id} - ${project.description || 'No description'}`;
                     dropdown1.add(option);
                 });
 
                 nodeData.forEach((node, index) => {
                     const option = document.createElement('option');
-                    option.value = node;
+                    option.value = nodeIdMatch[node.split("-")[0]];
                     option.text = node;
                     dropdown3.add(option);
                 });
@@ -230,7 +231,6 @@
             .withSuccessHandler(function(response) {
                 try {
                     const data = response;
-
                     google.script.run
                     .withSuccessHandler(function(response){
                       document.getElementById('loader').style.display = 'none';

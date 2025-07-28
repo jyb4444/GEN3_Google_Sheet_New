@@ -1,406 +1,5 @@
-
-// const node = {
-// $schema: "http://json-schema.org/draft-04/schema#",
-// additionalProperties: false,
-// category: "administrative",
-// description: "description of treatment.",
-// id: "treatment",
-// links: [
-// {
-// exclusive: false,
-// required: true,
-// subgroup: [
-// {
-// backref: "treatments",
-// label: "member_of",
-// multiplicity: "many_to_many",
-// name: "subjects",
-// required: true,
-// target_type: "subject"
-// },
-// {
-// backref: "treatments",
-// label: "member_of",
-// multiplicity: "many_to_one",
-// name: "cell_subjects",
-// required: false,
-// target_type: "cell_subject"
-// }
-// ]
-// }
-// ],
-// program: "*",
-// project: "*",
-// properties: {
-// addition_volume: {
-// type: "string"
-// },
-// administration_volume_ml: {
-// type: "number"
-// },
-// cell_subjects: {
-// anyOf: [
-// {
-// items: {
-// additionalProperties: true,
-// maxItems: 1,
-// minItems: 1,
-// properties: {
-// id: {
-// pattern: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
-// term: {
-// description: "A 128-bit identifier. Depending on the mechanism used to generate it, it is either guaranteed to be different from all other UUIDs/GUIDs generated until 3400 AD or extremely likely to be different. Its relatively small size lends itself well to sorting, ordering, and hashing of all sorts, storing in databases, simple allocation, and ease of programming in general.",
-// termDef: {
-// cde_id: "C54100",
-// cde_version: null,
-// source: "NCIt",
-// term: "Universally Unique Identifier",
-// term_url: "https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&version=16.02d&ns=NCI_Thesaurus&code=C54100"
-// }
-// },
-// type: "string"
-// },
-// submitter_id: {
-// type: "string"
-// }
-// },
-// type: "object"
-// },
-// type: "array"
-// },
-// {
-// additionalProperties: true,
-// properties: {
-// id: {
-// pattern: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
-// term: {
-// description: "A 128-bit identifier. Depending on the mechanism used to generate it, it is either guaranteed to be different from all other UUIDs/GUIDs generated until 3400 AD or extremely likely to be different. Its relatively small size lends itself well to sorting, ordering, and hashing of all sorts, storing in databases, simple allocation, and ease of programming in general.",
-// termDef: {
-// cde_id: "C54100",
-// cde_version: null,
-// source: "NCIt",
-// term: "Universally Unique Identifier",
-// term_url: "https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&version=16.02d&ns=NCI_Thesaurus&code=C54100"
-// }
-// },
-// type: "string"
-// },
-// submitter_id: {
-// type: "string"
-// }
-// },
-// type: "object"
-// }
-// ]
-// },
-// concentration_unit: {
-// type: "string"
-// },
-// created_datetime: {
-// oneOf: [
-// {
-// format: "date-time",
-// type: "string"
-// },
-// {
-// type: "null"
-// }
-// ],
-// term: {
-// description: "A combination of date and time of day in the form [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]"
-// }
-// },
-// date: {
-// type: "string"
-// },
-// dose_amount: {
-// type: "number"
-// },
-// dose_amount_unit: {
-// enum: [
-// "milligram per kilogram",
-// "microgram per kilogram",
-// "milligram per kilogram per day",
-// "microgram per kilogram per day",
-// "Not applicable",
-// "Missing",
-// "Not collected",
-// "Not provided",
-// "Restricted access"
-// ]
-// },
-// final_concentration: {
-// type: "string"
-// },
-// id: {
-// pattern: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
-// systemAlias: "node_id",
-// term: {
-// description: "A 128-bit identifier. Depending on the mechanism used to generate it, it is either guaranteed to be different from all other UUIDs/GUIDs generated until 3400 AD or extremely likely to be different. Its relatively small size lends itself well to sorting, ordering, and hashing of all sorts, storing in databases, simple allocation, and ease of programming in general.",
-// termDef: {
-// cde_id: "C54100",
-// cde_version: null,
-// source: "NCIt",
-// term: "Universally Unique Identifier",
-// term_url: "https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&version=16.02d&ns=NCI_Thesaurus&code=C54100"
-// }
-// },
-// type: "string"
-// },
-// project_id: {
-// term: {
-// description: "Unique ID for any specific defined piece of work that is undertaken or attempted to meet a single requirement."
-// },
-// type: "string"
-// },
-// provenance: {
-// description: "template version",
-// type: "string"
-// },
-// route: {
-// enum: [
-// "Administration via Cytapheresis",
-// "Administration via Fistula",
-// "Administration via Stoma",
-// "Auricular Route of Administration",
-// "Combination Route of Administration",
-// "Concomitant Medication Route of Administration",
-// "Dental Route of Administration",
-// "Dietary Route of Administration",
-// "Drop Instillation Route of Administration",
-// "Electro-osmosis Route of Administration",
-// "Endotracheal Route of Administration",
-// "Enteral Route of Administration",
-// "Epilesional Route of Administration",
-// "Exposure Route of Administration",
-// "Exposure as Collected Route of Administration",
-// "External Route of Administration",
-// "Extracorporeal Circulation Route of Administration",
-// "Genitourinary Route of Administration",
-// "Immersion Route of Exposure",
-// "In Beehive Route of Administration",
-// "In Vitro Route of Administration",
-// "Inhalation Route of Administration",
-// "Injection Route of Administration",
-// "Intestinal Route of Administration",
-// "Intracavernous Route of Administration",
-// "Intracavitary Route of Administration",
-// "Intracholangiopancreatic Route of Administration",
-// "Intracochlear Route of Administration",
-// "Intraglandular Route of Administration",
-// "Intrajejunal Route of Administration",
-// "Intralesional Route of Administration",
-// "Intramandibular Route of Administration",
-// "Intrapalatal Route of Administration",
-// "Intraparenchymal Route of Administration",
-// "Intrasurgical Site Route of Administration",
-// "Intrathalamic Route of Administration",
-// "Intraurethral Route of Administration",
-// "Intravaginal Route of Administration",
-// "Iontophoresis Route of Administration",
-// "Laryngeal Route of Administration",
-// "Laryngotracheal Route of Administration",
-// "Microdialysis Route of Administration",
-// "Mucosal Route of Administration",
-// "Nasal Route of Administration",
-// "Oculonasal Route of Administration",
-// "Ophthalmic Route of Administration",
-// "Oral Gavage Route of Administration",
-// "Oral Route of Administration",
-// "Other Route of Administration",
-// "Parenteral Route of Administration",
-// "Not applicable",
-// "Missing",
-// "Not collected",
-// "Not provided",
-// "Restricted access"
-// ]
-// },
-// state: {
-// default: "validated",
-// downloadable: [
-// "uploaded",
-// "md5summed",
-// "validating",
-// "validated",
-// "error",
-// "invalid",
-// "released"
-// ],
-// oneOf: [
-// {
-// enum: [
-// "uploading",
-// "uploaded",
-// "md5summing",
-// "md5summed",
-// "validating",
-// "error",
-// "invalid",
-// "suppressed",
-// "redacted",
-// "live"
-// ]
-// },
-// {
-// enum: [
-// "validated",
-// "submitted",
-// "released"
-// ]
-// }
-// ],
-// public: [
-// "live"
-// ],
-// term: {
-// description: "The current state of the object."
-// }
-// },
-// stock_concentration: {
-// type: "string"
-// },
-// subjects: {
-// anyOf: [
-// {
-// items: {
-// additionalProperties: true,
-// minItems: 1,
-// properties: {
-// id: {
-// pattern: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
-// term: {
-// description: "A 128-bit identifier. Depending on the mechanism used to generate it, it is either guaranteed to be different from all other UUIDs/GUIDs generated until 3400 AD or extremely likely to be different. Its relatively small size lends itself well to sorting, ordering, and hashing of all sorts, storing in databases, simple allocation, and ease of programming in general.",
-// termDef: {
-// cde_id: "C54100",
-// cde_version: null,
-// source: "NCIt",
-// term: "Universally Unique Identifier",
-// term_url: "https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&version=16.02d&ns=NCI_Thesaurus&code=C54100"
-// }
-// },
-// type: "string"
-// },
-// submitter_id: {
-// type: "string"
-// }
-// },
-// type: "object"
-// },
-// type: "array"
-// },
-// {
-// additionalProperties: true,
-// properties: {
-// id: {
-// pattern: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
-// term: {
-// description: "A 128-bit identifier. Depending on the mechanism used to generate it, it is either guaranteed to be different from all other UUIDs/GUIDs generated until 3400 AD or extremely likely to be different. Its relatively small size lends itself well to sorting, ordering, and hashing of all sorts, storing in databases, simple allocation, and ease of programming in general.",
-// termDef: {
-// cde_id: "C54100",
-// cde_version: null,
-// source: "NCIt",
-// term: "Universally Unique Identifier",
-// term_url: "https://ncit.nci.nih.gov/ncitbrowser/ConceptReport.jsp?dictionary=NCI_Thesaurus&version=16.02d&ns=NCI_Thesaurus&code=C54100"
-// }
-// },
-// type: "string"
-// },
-// submitter_id: {
-// type: "string"
-// }
-// },
-// type: "object"
-// }
-// ]
-// },
-// submitter_id: {
-// type: "string"
-// },
-// test_article_administration_duration: {
-// type: "number"
-// },
-// test_article_administration_zt: {
-// type: "number"
-// },
-// test_article_dtxsid: {
-// type: "string"
-// },
-// test_article_name: {
-// type: "string"
-// },
-// treatment_protocol: {
-// type: "string"
-// },
-// type: {
-// enum: [
-// "treatment"
-// ]
-// },
-// updated_datetime: {
-// oneOf: [
-// {
-// format: "date-time",
-// type: "string"
-// },
-// {
-// type: "null"
-// }
-// ],
-// term: {
-// description: "A combination of date and time of day in the form [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]"
-// }
-// },
-// vehicle_dtxsid: {
-// type: "string"
-// },
-// vehicle_name: {
-// type: "string"
-// }
-// },
-// required: [
-// "type",
-// "submitter_id",
-// "treatment_protocol"
-// ],
-// submittable: true,
-// systemProperties: [
-// "id",
-// "project_id",
-// "state",
-// "created_datetime",
-// "updated_datetime"
-// ],
-// title: "treatment",
-// type: "object",
-// uniqueKeys: [
-// [
-// "id"
-// ],
-// [
-// "project_id",
-// "submitter_id"
-// ]
-// ],
-// validators: null
-// }
-
 function getPropertiesName(properties){
   return Object.keys(properties)
-}
-
-function getParentNode(node){
-  const allPaths = [
-    [{"project": "projects"}, {"study": "studies"}, {"subject": "subjects"}, {"treatment": "treatment"}]
-  ]
-  for(let arr of allPaths){
-    for (let i = 0; i < arr.length; i++) {
-      if (arr[i][node]) {
-        return Object.values(arr[i - 1])[0];
-      }
-    }
-  }
-  return "Do not find the node in all paths."
 }
 
 function findSubmitterIdsForNode(currentData, targetNodeName, results = []) {
@@ -476,107 +75,269 @@ function findSubmitterIdsForNode(currentData, targetNodeName, results = []) {
 }
 
 function generateParentSubmitterIdColumnName(pluralNodeName) {
-  // 简单规则：移除末尾的 's' (不处理不规则复数，例如 "analysis" -> "analyses")
   let singularNodeName = "";
   if (pluralNodeName.endsWith("ies")) {
-    // 处理以 'ies' 结尾的复数，如 studies -> study
     singularNodeName = pluralNodeName.slice(0, -3) + "y";
   } else if (pluralNodeName.endsWith("s")) {
-    // 移除末尾的 's'
     singularNodeName = pluralNodeName.slice(0, -1);
   } else {
-    // 如果不是以 's' 或 'ies' 结尾，假设本身就是单数，或者需要更复杂的映射
     singularNodeName = pluralNodeName;
     console.warn(`Warning: '${pluralNodeName}' does not end with 's' or 'ies'. Assuming it's already singular or needs custom handling.`);
   }
 
-  return `${singularNodeName}_submitter_id`;
+  return `${singularNodeName}.submitter_id`;
 }
 
 function displayResults(node, data, properties, hiddenProperties) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-	
-	// Check if not is study 
-	// TODO: Check if we still need this. Previously here because study had no parent node (project)
-    if (node === "study") {
-      sheet.clear();
-      clearRulesNotesAndDropdowns(sheet);
-      fetchDataByNode(node);
+    
+    // if (node === "study") {
+    //   handleStudyNode(sheet, node);
+    //   return;
+    // }
+    
+    // 新的数据结构是一个对象数组
+    if (!data || data.length === 0) {
+      Logger.log("No data available.");
       return;
     }
-	
-    const parentNode = getParentNode(node)
+
+    const columnNames = buildColumnNames(node, properties, hiddenProperties, data);
+    setupSheet(sheet, columnNames, properties, hiddenProperties);
+    insertData(sheet, data, columnNames);
     
-	// TODO: Make sure this key matches. Can we use data.data[0] instead?
-    const treatmentProjectIds = data.data.project_with_treatments;
-	SpreadsheetApp.getUi().alert(treatmentProjectIds)
-    
-	const checkHiddenProperties = new Set(hiddenProperties);
-
-    if (!treatmentProjectIds || treatmentProjectIds.length === 0) {
-      Logger.log("No data available.");
-      //return;
-    }
-
-    let fieldsList = traceToRoot(node);
-    const columnNames1 = fieldsList;
-    const columnNames2 = Object.keys(properties).filter((item) => !checkHiddenProperties.has(item)); 
-    const columnNames = columnNames1.concat(columnNames2);
-
-    sheet.clear();
-    clearRulesNotesAndDropdowns(sheet);
-    sheet.appendRow(columnNames);
-
-    // 设置下拉菜单和注释
-    columnNames2.forEach((propertyName, index) => {
-      const columnIndex = columnNames1.length + index + 1; // 计算 columnNames2 对应的列索引
-      const propertyConfig = properties[propertyName];
-
-      // 设置下拉菜单
-      if (propertyConfig && propertyConfig.enum && propertyConfig.enum.length > 0) {
-        const rule = SpreadsheetApp.newDataValidation()
-          .requireValueInList(propertyConfig.enum)
-          .setAllowInvalid(false)
-          .build();
-        sheet.getRange(2, columnIndex, sheet.getMaxRows() - 1).setDataValidation(rule);
-      }
-
-      // 设置注释
-      if (propertyConfig && propertyConfig.term && propertyConfig.term.description) {
-        sheet.getRange(1, columnIndex).setNote(propertyConfig.term.description);
-      }
-    });
-
-    const parentNodeId = generateParentSubmitterIdColumnName(parentNode)
-    columnNames.unshift(parentNodeId)
-    SpreadsheetApp.getUi().alert(JSON.stringify(columnNames))
-
-    const rows = [];
-    const checkDuplicate = new Set();
-    SpreadsheetApp.getUi().alert(JSON.stringify(treatmentProjectIds))
-
-    if(Object.keys(treatmentProjectIds[0]).length >= 1){
-      treatmentProjectIds.forEach((item) => {
-        const ids = findSubmitterIdsForNode(item, parentNode);
-        SpreadsheetApp.getUi().alert("")
-        SpreadsheetApp.getUi().alert(JSON.stringify(ids))
-        rows.push(ids)
-      })
-    }
-
-    if (rows.length > 0) {
-      sheet.getRange(2, 1, rows.length, 1).setValues(rows);
-    }
-
-    deleteEmptyRows(sheet);
-
-    sheet.autoResizeColumns(1, columnNames.length);
+    finalizeSheet(sheet, columnNames);
     Logger.log("Data rendered to sheet successfully.");
+    
   } catch (err) {
     const ui = SpreadsheetApp.getUi();
     ui.alert(`Error: ${err.message}\nDetails: ${err.stack}`);
   }
+}
+
+function handleStudyNode(sheet, node) {
+  sheet.clear();
+  clearRulesNotesAndDropdowns(sheet);
+  fetchDataByNode(node);
+}
+
+function buildColumnNames(node, properties, hiddenProperties, data = []) {
+  const checkHiddenProperties = new Set(hiddenProperties);
+  
+  // Get visible property names from properties
+  const visibleProperties = Object.keys(properties).filter(
+    item => !checkHiddenProperties.has(item)
+  );
+  
+  // 从数据中提取实际存在的列名
+  const dataColumns = new Set();
+  data.forEach(item => {
+    Object.keys(item).forEach(key => {
+      dataColumns.add(key);
+    });
+  });
+  
+  // Extract and remove provenance column if it exists
+  const provenanceIndex = visibleProperties.indexOf('provenance');
+  let provenanceColumn = null;
+  if (provenanceIndex !== -1) {
+    provenanceColumn = visibleProperties.splice(provenanceIndex, 1)[0];
+  }
+  
+  // Separate submitter_id columns from other columns
+  const { submitterIdColumns, otherColumns } = separateSubmitterIdColumns(visibleProperties);
+  
+  // Process plural column names to "columnName.submitter_id" format
+  const processedColumns = processPluralColumns(otherColumns);
+  
+  // 将数据中的列名加入到列名列表中
+  const dataColumnsList = Array.from(dataColumns);
+  
+  // Combine all columns: data columns first, then submitter_id columns, then processed columns
+  let allProcessedColumns = [...dataColumnsList, ...submitterIdColumns, ...processedColumns];
+  
+  // Remove duplicate column names
+  const uniqueColumns = removeDuplicateColumns(allProcessedColumns);
+  
+  // Add provenance column at the end if it exists
+  if (provenanceColumn) {
+    uniqueColumns.push(provenanceColumn);
+  }
+  
+  return uniqueColumns;
+}
+
+function separateSubmitterIdColumns(columns) {
+  const submitterIdColumns = [];
+  const otherColumns = [];
+  
+  columns.forEach(column => {
+    if (column.includes('submitter_id')) {
+      submitterIdColumns.push(column);
+    } else {
+      otherColumns.push(column);
+    }
+  });
+  
+  return { submitterIdColumns, otherColumns };
+}
+
+function processPluralColumns(columns) {
+  return columns.map(column => {
+    // Check if it's plural (simple plural check: ends with 's' but not 'ss')
+    if (column.endsWith('s') && !column.endsWith('ss') && column.length > 1) {
+      return generateParentSubmitterIdColumnName(column);
+    }
+    return column;
+  });
+}
+
+function removeDuplicateColumns(columns) {
+  const uniqueColumns = [];
+  const seenColumns = new Set();
+  
+  columns.forEach(column => {
+    if (!seenColumns.has(column)) {
+      seenColumns.add(column);
+      uniqueColumns.push(column);
+    }
+  });
+  
+  return uniqueColumns;
+}
+
+function setupSheet(sheet, columnNames, properties, hiddenProperties) {
+  sheet.clear();
+  clearRulesNotesAndDropdowns(sheet);
+  sheet.appendRow(columnNames);
+  
+  setupDropdownsAndNotes(sheet, columnNames, properties, hiddenProperties);
+}
+
+function setupDropdownsAndNotes(sheet, columnNames, properties, hiddenProperties) {
+  const checkHiddenProperties = new Set(hiddenProperties);
+  const visibleProperties = Object.keys(properties).filter(
+    item => !checkHiddenProperties.has(item)
+  );
+  
+  visibleProperties.forEach(propertyName => {
+    const columnIndex = columnNames.indexOf(propertyName);
+    if (columnIndex === -1) return;
+    
+    const actualColumnIndex = columnIndex + 1; // Excel columns start from 1
+    const propertyConfig = properties[propertyName];
+    
+    // Setup dropdown menu
+    setupDropdown(sheet, propertyConfig, actualColumnIndex);
+
+    // Setup notes
+    setupNote(sheet, propertyConfig, actualColumnIndex);
+  });
+}
+
+function setupDropdown(sheet, propertyConfig, columnIndex) {
+  if (propertyConfig && propertyConfig.enum && propertyConfig.enum.length > 0) {
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(propertyConfig.enum)
+      .setAllowInvalid(false)
+      .build();
+    sheet.getRange(2, columnIndex, sheet.getMaxRows() - 1).setDataValidation(rule);
+  }
+}
+
+function setupNote(sheet, propertyConfig, columnIndex) {
+  if (propertyConfig && propertyConfig.term && propertyConfig.term.description) {
+    sheet.getRange(1, columnIndex).setNote(propertyConfig.term.description);
+  } else if (propertyConfig && propertyConfig.description) {
+    sheet.getRange(1, columnIndex).setNote(propertyConfig.description);
+  }
+}
+
+function insertData(sheet, nodeDataArray, columnNames) {
+  const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  const processedData = processDataForInsertion(nodeDataArray);
+  
+  if (processedData.length > 0) {
+    insertProcessedData(sheet, processedData, currentHeaders);
+  } else {
+    SpreadsheetApp.getUi().alert("No submitter id found to insert.");
+  }
+}
+
+function processDataForInsertion(nodeDataArray) {
+  // 首先收集所有的列名（属性名）
+  const allColumns = new Set();
+  const columnValues = {};
+  
+  // 遍历数组，收集所有属性名和对应的值
+  nodeDataArray.forEach(item => {
+    Object.keys(item).forEach(key => {
+      allColumns.add(key);
+      if (!columnValues[key]) {
+        columnValues[key] = [];
+      }
+      columnValues[key].push(item[key]);
+    });
+  });
+  
+  // 找出最长的值数组长度，这将决定行数
+  const maxRows = Math.max(...Object.values(columnValues).map(arr => arr.length));
+  
+  // 构建行数据
+  const processedData = [];
+  for (let i = 0; i < maxRows; i++) {
+    const rowData = {};
+    
+    // 为每一列填充值
+    allColumns.forEach(column => {
+      if (columnValues[column] && columnValues[column].length > 0) {
+        // 如果该列只有一个值（如 project.code），则在所有行中重复这个值
+        if (columnValues[column].length === 1) {
+          rowData[column] = columnValues[column][0];
+        } else {
+          // 如果该列有多个值，按索引取值，超出范围则为空
+          rowData[column] = columnValues[column][i] || '';
+        }
+      } else {
+        rowData[column] = '';
+      }
+    });
+    
+    processedData.push(rowData);
+  }
+  
+  return processedData;
+}
+
+function insertProcessedData(sheet, processedData, currentHeaders) {
+  const PROVENANCE_VALUE = "v0.2.1-9-g520a259";
+
+  // Convert object array to 2D array, ensuring each row follows currentHeaders order
+  const values = processedData.map(record => 
+    currentHeaders.map(header => {
+      if (header === 'provenance') {
+        return PROVENANCE_VALUE;
+      }
+
+      const value = record[header];
+      return value !== undefined && value !== null ? value : '';
+    })
+  );
+  
+  // Get data insertion range (starting from row 2, since row 1 is headers)
+  const dataRange = sheet.getRange(2, 1, values.length, currentHeaders.length);
+  
+  // Batch insert data
+  dataRange.setValues(values);
+  
+  SpreadsheetApp.getUi().alert(`Successfully inserted ${values.length} rows for submitter id.`);
+}
+
+function finalizeSheet(sheet, columnNames) {
+  deleteEmptyRows(sheet);
+  sheet.autoResizeColumns(1, columnNames.length);
 }
 
 function deleteEmptyRows(sheet) {
@@ -637,13 +398,3 @@ function clearRulesNotesAndDropdowns(sheet) {
 
   Logger.log("Cleared all content, notes, and data validations.");
 }
-
-// function clearRulesNotesAndDropdowns(sheet) {
-//   sheet.clearDataValidations(); // 清除数据验证规则 (包括下拉菜单)
-//   const maxCols = sheet.getMaxColumns();
-//   const headerRange = sheet.getRange(1, 1, 1, maxCols);
-//   const notes = headerRange.getNotes();
-//   const newNotes = notes.map(row => row.map(() => '')); // 创建一个相同大小的空注释数组
-//   headerRange.setNotes(newNotes); // 清除标题行的注释
-// }
-
