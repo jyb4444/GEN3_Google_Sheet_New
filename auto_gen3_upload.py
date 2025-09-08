@@ -7,10 +7,8 @@ Handles two types of files:
 """
 
 import pandas as pd
-import numpy as np
 import subprocess
 import sys
-import gen3
 import json
 import requests
 import os
@@ -26,9 +24,10 @@ from gen3.query import Gen3Query
 from gen3.metadata import Gen3Metadata
 from gen3.file import Gen3File
 from requests.auth import HTTPBasicAuth
+from typing import Iterable, Tuple, Dict, Any
 
 class FileProcessor:
-    def __init__(self, api_url='https://dev.toxdatacommons.com/', 
+    def __init__(self, api_url='https://dev.pvatppgmsu.com/', 
                  cred_path='/Users/kejiyuan/Desktop/credentials_dev.json',
                  base_path=None, prog=None, proj=None):
         """Initialize the file processor with API credentials"""
@@ -102,7 +101,7 @@ class FileProcessor:
         Call API to get node dictionary
         Returns: properties from the node dictionary
         """
-        api_url = f"https://dev.toxdatacommons.com/api/v0/submission/_dictionary/{node}"
+        api_url = f"https://dev.pvatppgmsu.com/api/v0/submission/_dictionary/{node}"
         
         try:
             response = requests.get(api_url)
@@ -317,7 +316,7 @@ class FileProcessor:
             print(f"Uploading file: {file_path}")
             
             # First try with gen3-client
-            cmd = ['/Applications/gen3-client', 'upload', '--profile=toxdc', f'--upload-path={base_path}{file_path}']
+            cmd = ['/Applications/gen3-client', 'upload', '--profile=poxdc', f'--upload-path={base_path}{file_path}']
             print("@@@@@@@@@@@@@@@@@@@@@@@@")
             print(cmd)
             print("@@@@@@@@@@@@@@@@@@@@@@@@")
@@ -325,10 +324,12 @@ class FileProcessor:
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             print("Upload command output:")
+            print(result.stderr)
             print(result.stdout)
             
             # Extract GUID from output - improved pattern matching
-            guid_pattern = r'to GUID (dg\.TDC/[a-f0-9-]+)'
+            guid_pattern = r'to GUID (dg\.PDC/[a-f0-9-]+)'
+            full_output = result.stdout + result.stderr
             guid_match = re.search(guid_pattern, result.stdout)
             
             if guid_match:
@@ -337,7 +338,7 @@ class FileProcessor:
                 return guid
             
             # Also check stderr for successful upload message
-            stderr_guid_pattern = r'to GUID (dg\.TDC/[a-f0-9-]+)'
+            stderr_guid_pattern = r'to GUID (dg\.PDC/[a-f0-9-]+)'
             stderr_match = re.search(stderr_guid_pattern, result.stderr)
             
             if stderr_match:
@@ -523,12 +524,170 @@ class FileProcessor:
         except Exception as e:
             print(f"Error processing data file: {e}")
             raise
+
+    def update_dataframe_from_record(self, enhanced_df, index, record, prog, proj):
+        """
+        Update specific row in DataFrame from record dictionary
+        
+        Parameters:
+        - enhanced_df: DataFrame to update
+        - index: Row index to update
+        - record: Dictionary containing file information
+        - prog: Program ID
+        - proj: Project ID
+        - submitter_id: Submitter ID
+        - type_value: Type value
+        
+        Returns:
+        - updates_count: Number of updated fields
+        """
+        updates_count = 0
+        
+        print(f"Processing record: {record.get('file_name', 'Unknown')}")
+        
+        # Define field mappings to update
+        field_mappings = {
+            'md5sum': record.get('hashes', {}).get('md5'),
+            'file_size': record.get('size'),
+            'file_name': record.get('file_name'),
+            'object_id': record.get('did'),
+            'project_id': f"{prog}-{proj}"
+        }
+        
+        # Handle complex fields
+        # core_metadata_collections
+        field_mappings['core_metadata_collections'] = proj  # Convert to JSON string
+        # Iterate through field mappings and update DataFrame
+        for column_name, new_value in field_mappings.items():
+            if column_name in enhanced_df.columns:
+                # Check if current value is empty or NaN
+                current_value = enhanced_df.at[index, column_name]
+                
+                if pd.isna(current_value) or current_value == '' or current_value is None:
+                    if new_value is not None:  # Only update when new value is not empty
+                        enhanced_df.at[index, column_name] = new_value
+                        updates_count += 1
+                        print(f"  ✓ Updated {column_name}: {new_value}")
+                    else:
+                        print(f"  ⚠ Skipped {column_name}: new value is empty")
+                else:
+                    print(f"  - Skipped {column_name}: already has value '{current_value}'")
+            else:
+                print(f"  ⚠ Column '{column_name}' does not exist in DataFrame")
+        
+        return updates_count
+
+    def enhance_csv_with_records(self, filename, index2, sep="\t"):
+        """
+        Read CSV file and enhance data using records obtained from index2.get_record()
+        
+        Parameters:
+        - filename: CSV file path
+        - index2: Index object containing get_record method
+        - sep: CSV separator, default is tab
+        
+        Returns:
+        - Enhanced DataFrame, returns original DataFrame if conditions not met
+        """
+        
+        # 1. Read CSV file
+        try:
+            df = pd.read_csv(filename, sep=sep)
+            print("Original data first 5 rows:")
+            print(df.head())
+            print(f"\nColumn names: {list(df.columns)}")
+        except Exception as e:
+            print(f"Failed to read file: {e}")
+            return None
+        
+        # 2. Check if column names contain required columns
+        required_columns = ['file_name', 'md5sum', 'object_id', 'file_size']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            print(f"Missing required columns: {missing_columns}")
+            print("Returning original DataFrame")
+            return df
+        
+        print("✓ All required columns exist")
+        
+        # 3. Read object_id column content and deduplicate
+        unique_object_ids = df['object_id'].dropna().unique()
+        print(f"\nFound {len(unique_object_ids)} unique object_ids")
+        
+        # 4. Get records for each unique object_id and process
+        records_cache = {}  # Cache records to avoid duplicate queries
+        
+        for object_id in unique_object_ids:
+            try:
+                # Get record
+                record = index2.get_record(object_id)
+                print("--------------check----------------")
+                print(object_id)
+                print(record)
+                if record is not None:
+                    # If record is string, try to parse as JSON
+                    if isinstance(record, str):
+                        try:
+                            record = json.loads(record)
+                        except json.JSONDecodeError:
+                            print(f"Warning: record for object_id {object_id} is not valid JSON format")
+                            continue
+                    
+                    records_cache[object_id] = record
+                    print(f"✓ Successfully obtained record for object_id {object_id}")
+                else:
+                    print(f"Warning: record not found for object_id {object_id}")
+                    
+            except Exception as e:
+                print(f"Error getting record for object_id {object_id}: {e}")
+        
+        # 5. Check if record keys appear in DataFrame column names and fill corresponding values
+        if not records_cache:
+            print("No records successfully obtained, returning original DataFrame")
+            return df
+        
+        # Create DataFrame copy to avoid modifying original data
+        enhanced_df = df.copy()
+        
+        # Count update information
+        updates_count = 0
+        
+        # Iterate through each row of DataFrame
+        for index, row in enhanced_df.iterrows():
+            object_id = row['object_id']
+            
+            # Skip null values or object_ids not in cache
+            if pd.isna(object_id) or object_id not in records_cache:
+                continue
+            
+            record = records_cache[object_id]
+            updates_count = self.update_dataframe_from_record(
+                enhanced_df, index, record, self.prog, self.proj
+            )
+        
+        print(f"\nCompleted data enhancement:")
+        print(f"- Processed {len(records_cache)} valid records")
+        print(f"- Total updated {updates_count} cells")
+        
+        # Display enhanced data
+        print(f"\nEnhanced data first 5 rows:")
+        print(enhanced_df.head())
+        
+        return enhanced_df        
+
+    def save_enhanced_csv(self, enhanced_df, output_filename, sep="\t"):
+        try:
+            enhanced_df.to_csv(output_filename, sep=sep, index=False)
+            print(f"✓ enhanced data has been saved to: {output_filename}")
+        except Exception as e:
+            print(f"Save file failed: {e}")
     
     def process_file(self, filename, base_path):
         """
         Main processing function that handles both file types
         """
-        print(f"Processing file: {base_path + filename}")
+        print(f"Processing file: {filename}")
         
         try:
             # Parse filename to determine type
@@ -539,6 +698,13 @@ class FileProcessor:
             
             if file_type == 'tsv':
                 # Handle TSV files (project-study-node.tsv)
+
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                enhanced_df = self.enhance_csv_with_records(filename, self.index2)
+                if enhanced_df is not None:
+                    self.save_enhanced_csv(enhanced_df, filename)
+                print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
                 print("Processing TSV file...")
                 result = self.submit_tsv_file(
                     filename,
@@ -572,9 +738,9 @@ def main():
     parser = argparse.ArgumentParser(description='Process and upload files to Gen3 data commons')
     parser.add_argument('filename', help='Path to the TSV file to process')
     parser.add_argument('--base-path', type=str, help='Base path where data files are located (required for datafile processing)')
-    parser.add_argument('--api-url', type=str, default='https://dev.toxdatacommons.com/', 
+    parser.add_argument('--api-url', type=str, default='https://dev.pvatppgmsu.com/', 
                        help='API URL for Gen3 data commons')
-    parser.add_argument('--cred-path', type=str, default='/Users/kejiyuan/Desktop/credentials_dev.json',
+    parser.add_argument('--cred-path', type=str, default='/Users/kejiyuan/Desktop/credentials_ppg.json',
                        help='Path to credentials JSON file')
     parser.add_argument('--prog', type=str, required=True, help='Program name (e.g., TRAINING)')
     parser.add_argument('--proj', type=str, required=True, help='Project name (e.g., training001)')
