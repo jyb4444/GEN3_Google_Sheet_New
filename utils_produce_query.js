@@ -156,7 +156,7 @@ class SubmissionProcessor {
    *                          Example: { project: { code: "TDC0001" }, study: { submitter_id: "PRJ129" } }
    * @returns {string} Formatted GraphQL query string
    */
-  generateGraphqlQuery(path, filters = {}) {
+generateGraphqlQuery(path, filters = {}) {
     if (!path || path.length === 0) {
       return "";
     }
@@ -173,18 +173,22 @@ class SubmissionProcessor {
       // Build filter arguments for current node
       const buildFilterArgs = (nodeName) => {
         const nodeFilters = filters[nodeName];
-        if (!nodeFilters || typeof nodeFilters !== 'object') {
-          return "";
+        const filterPairs = [];
+        
+        // Add first: 3000 to all nodes except 'project' and 'study'
+        if (nodeName !== "project" && nodeName !== "study") {
+          filterPairs.push("first: 3000");
         }
         
-        const filterPairs = [];
-        for (const [key, value] of Object.entries(nodeFilters)) {
-          // Handle string values (wrap in quotes)
-          if (typeof value === 'string') {
-            filterPairs.push(`${key}: "${value}"`);
-          } else {
-            // Handle other types (numbers, booleans, etc.)
-            filterPairs.push(`${key}: ${value}`);
+        if (nodeFilters && typeof nodeFilters === 'object') {
+          for (const [key, value] of Object.entries(nodeFilters)) {
+            // Handle string values (wrap in quotes)
+            if (typeof value === 'string') {
+              filterPairs.push(`${key}: "${value}"`);
+            } else {
+              // Handle other types (numbers, booleans, etc.)
+              filterPairs.push(`${key}: ${value}`);
+            }
           }
         }
         
@@ -208,7 +212,7 @@ class SubmissionProcessor {
         
         // Check if this node type supports filters (currently project and study)
         const supportsFilters = currentNode === "study";
-        const filterArgs = supportsFilters ? buildFilterArgs(currentNode) : "";
+        const filterArgs = supportsFilters ? buildFilterArgs(currentNode) : buildFilterArgs(currentNode);
         const fieldWithFilters = `${fieldName}${filterArgs}`;
         
         if (remainingNodes.length > 0) {
@@ -359,84 +363,260 @@ function testFunction() {
   }
 }
 
-function flattenDataStructure(data) {
+function flattenDataStructure(data, path = []) {
   const result = [];
   
-  // Recursive function to traverse nested structure
-  function traverse(obj, nodeType = '') {
-    // If current object has code (project level)
+  // Recursive function to traverse nested structure and maintain path context
+  function traverse(obj, currentPath = {}, nodeType = '') {
+    let newPath = { ...currentPath };
+    
+    // If current object has code (project level), add to path
     if (obj.code) {
-      result.push({"project.code": obj.code});
+      newPath["project.code"] = obj.code;
     }
     
-    // If current object has submitter_id, add to result based on node type
+    // If current object has submitter_id, add to path based on node type
     if (obj.submitter_id && nodeType) {
-      result.push({[`${nodeType}.submitter_id`]: obj.submitter_id});
+      newPath[`${nodeType}.submitter_id`] = obj.submitter_id;
     }
     
-    // Traverse all properties and continue recursion
+    // Add other properties that are not arrays or objects
+    for (const [key, value] of Object.entries(obj)) {
+      if (key !== 'submitter_id' && key !== 'code' && key !== 'description' && 
+          !Array.isArray(value) && typeof value !== 'object') {
+        if (nodeType) {
+          newPath[`${nodeType}.${key}`] = value;
+        } else {
+          newPath[key] = value;
+        }
+      }
+    }
+    
+    // Check if this object has any child arrays
+    let hasChildArrays = false;
+    let childArrays = [];
+    
+    // First pass: identify all child arrays
     for (const [key, value] of Object.entries(obj)) {
       if (Array.isArray(value)) {
-        // Determine child node type based on property name
-        let childNodeType = '';
-        switch(key) {
-          case 'aligned_reads': childNodeType = 'aligned_read'; break;
-          case 'aligned_reads_analyzed_datas': childNodeType = 'aligned_reads_analyzed_data'; break;
-          case 'alignment_workflows': childNodeType = 'alignment_workflow'; break;
-          case 'aliquots': childNodeType = 'aliquot'; break;
-          case 'cell_subjects': childNodeType = 'cell_subject'; break;
-          case 'contacts': childNodeType = 'contact'; break;
-          case 'core_metadata_collections': childNodeType = 'core_metadata_collection'; break;
-          case 'culture_conditions': childNodeType = 'culture_conditions'; break;
-          case 'culture_medias': childNodeType = 'culture_media'; break;
-          case 'data_releases': childNodeType = 'data_release'; break;
-          case 'diets': childNodeType = 'diet'; break;
-          case 'flow_analysises': childNodeType = 'flow_analysis'; break;
-          case 'flow_analysis_datas': childNodeType = 'flow_analysis_data'; break;
-          case 'flow_cytometry_assays': childNodeType = 'flow_cytometry_assay'; break;
-          case 'flow_datas': childNodeType = 'flow_data'; break;
-          case 'fundings': childNodeType = 'funding'; break;
-          case 'housings': childNodeType = 'housing'; break;
-          case 'mass_spec_assays': childNodeType = 'mass_spec_assay'; break;
-          case 'metabolite_ids': childNodeType = 'metabolite_id'; break;
-          case 'metaschemas': childNodeType = 'metaschema'; break;
-          case 'ms_analysed_datas': childNodeType = 'ms_analysed_data'; break;
-          case 'ms_analyses': childNodeType = 'ms_analysis'; break;
-          case 'ms_raw_datas': childNodeType = 'ms_raw_data'; break;
-          case 'programs': childNodeType = 'program'; break;
-          case 'projects': childNodeType = 'project'; break;
-          case 'publications': childNodeType = 'publication'; break;
-          case 'read_groups': childNodeType = 'read_group'; break;
-          case 'roots': childNodeType = 'root'; break;
-          case 'samples': childNodeType = 'sample'; break;
-          case 'slides': childNodeType = 'slide'; break;
-          case 'slide_images': childNodeType = 'slide_image'; break;
-          case 'slide_pathologys': childNodeType = 'slide_pathology'; break;
-          case 'studies': childNodeType = 'study'; break;
-          case 'subjects': childNodeType = 'subject'; break;
-          case 'treatments': childNodeType = 'treatment'; break;
-          case 'unaligned_reads': childNodeType = 'unaligned_read'; break;
-          case 'unaligned_reads_qcs': childNodeType = 'unaligned_reads_qc'; break;
-          case 'weight_measurements': childNodeType = 'weight_measurement'; break;
-        }
-        
-        // Recursively process each element in the array
+        hasChildArrays = true;
+        childArrays.push({ key, value, nodeType: getNodeType(key) });
+      }
+    }
+    
+    // If no child arrays, this is a leaf node - add to results
+    if (!hasChildArrays) {
+      result.push(newPath);
+      return;
+    }
+    
+    // Process child arrays - ensure consistent row count
+    if (childArrays.length === 1) {
+      // Single child array case
+      const { key, value, nodeType: childNodeType } = childArrays[0];
+      if (value.length === 0) {
+        // Empty array - add current path with empty values for this child type
+        const emptyChildPath = { ...newPath };
+        // Add empty placeholder columns for this child node type
+        addEmptyColumnsForNodeType(emptyChildPath, childNodeType);
+        result.push(emptyChildPath);
+      } else {
+        // Process each item in the array
         value.forEach(item => {
           if (typeof item === 'object' && item !== null) {
-            traverse(item, childNodeType);
+            traverse(item, newPath, childNodeType);
           }
         });
-      } else if (typeof value === 'object' && value !== null && key !== 'submitter_id' && key !== 'code' && key !== 'description') {
-        // If it's an object, recursively process it
-        traverse(value, nodeType);
       }
+    } else {
+      // Multiple child arrays case - need to handle cross-product
+      handleMultipleChildArrays(obj, newPath, childArrays);
     }
   }
   
-  // Start traversal
-  traverse(data);
+  // Helper function to handle multiple child arrays
+  function handleMultipleChildArrays(obj, currentPath, childArrays) {
+    // Find the maximum length among all child arrays
+    const maxLength = Math.max(...childArrays.map(({ value }) => Math.max(value.length, 1)));
+    
+    // Generate combinations for each position up to maxLength
+    for (let i = 0; i < maxLength; i++) {
+      let combinedPath = { ...currentPath };
+      let hasValidData = false;
+      
+      // Process each child array at position i
+      childArrays.forEach(({ key, value, nodeType: childNodeType }) => {
+        if (i < value.length && value[i]) {
+          // Item exists at this position
+          const item = value[i];
+          if (typeof item === 'object' && item !== null) {
+            // Add submitter_id if exists
+            if (item.submitter_id && childNodeType) {
+              combinedPath[`${childNodeType}.submitter_id`] = item.submitter_id;
+            }
+            
+            // Add other properties that are not arrays or objects
+            for (const [itemKey, itemValue] of Object.entries(item)) {
+              if (itemKey !== 'submitter_id' && itemKey !== 'code' && itemKey !== 'description' && 
+                  !Array.isArray(itemValue) && typeof itemValue !== 'object') {
+                if (childNodeType) {
+                  combinedPath[`${childNodeType}.${itemKey}`] = itemValue;
+                } else {
+                  combinedPath[itemKey] = itemValue;
+                }
+              }
+            }
+            hasValidData = true;
+          }
+        } else {
+          // No item at this position or empty array - add empty placeholders
+          addEmptyColumnsForNodeType(combinedPath, childNodeType);
+        }
+      });
+      
+      // Add the combined path to results
+      result.push(combinedPath);
+      
+      // If any child array has nested arrays, we need to handle those recursively
+      // For now, we'll handle the simple case where child items don't have further nested arrays
+      childArrays.forEach(({ key, value, nodeType: childNodeType }) => {
+        if (i < value.length && value[i]) {
+          const item = value[i];
+          if (typeof item === 'object' && item !== null) {
+            // Check if this item has nested arrays
+            const hasNestedArrays = Object.values(item).some(val => Array.isArray(val) && val.length > 0);
+            if (hasNestedArrays) {
+              // Remove the current result and process recursively instead
+              result.pop();
+              traverse(item, currentPath, childNodeType);
+              return;
+            }
+          }
+        }
+      });
+    }
+  }
+  
+  // Helper function to add empty columns for a specific node type
+  function addEmptyColumnsForNodeType(path, nodeType) {
+    if (!nodeType) return;
+    
+    // Add common empty columns that might exist for this node type
+    path[`${nodeType}.submitter_id`] = '';
+    
+    // You can add more common column patterns here if needed
+    // For example: path[`${nodeType}.id`] = '';
+  }
+  
+  // Helper function to determine node type from property name
+  function getNodeType(key) {
+    const nodeTypeMap = {
+      'aligned_reads': 'aligned_read',
+      'aligned_reads_analyzed_datas': 'aligned_reads_analyzed_data',
+      'alignment_workflows': 'alignment_workflow',
+      'aliquots': 'aliquot',
+      'cell_subjects': 'cell_subject',
+      'contacts': 'contact',
+      'core_metadata_collections': 'core_metadata_collection',
+      'culture_conditions': 'culture_conditions',
+      'culture_medias': 'culture_media',
+      'data_releases': 'data_release',
+      'diets': 'diet',
+      'flow_analysises': 'flow_analysis',
+      'flow_analysis_datas': 'flow_analysis_data',
+      'flow_cytometry_assays': 'flow_cytometry_assay',
+      'flow_datas': 'flow_data',
+      'fundings': 'funding',
+      'housings': 'housing',
+      'mass_spec_assays': 'mass_spec_assay',
+      'metabolite_ids': 'metabolite_id',
+      'metaschemas': 'metaschema',
+      'ms_analysed_datas': 'ms_analysed_data',
+      'ms_analyses': 'ms_analysis',
+      'ms_raw_datas': 'ms_raw_data',
+      'programs': 'program',
+      'projects': 'project',
+      'publications': 'publication',
+      'read_groups': 'read_group',
+      'roots': 'root',
+      'samples': 'sample',
+      'slides': 'slide',
+      'slide_images': 'slide_image',
+      'slide_pathologys': 'slide_pathology',
+      'studies': 'study',
+      'subjects': 'subject',
+      'treatments': 'treatment',
+      'unaligned_reads': 'unaligned_read',
+      'unaligned_reads_qcs': 'unaligned_reads_qc',
+      'weight_measurements': 'weight_measurement'
+    };
+    
+    return nodeTypeMap[key] || '';
+  }
+  
+  // Start traversal from the data object
+  if (data && data.data) {
+    traverse(data.data);
+  } else {
+    traverse(data);
+  }
   
   return result;
+}
+
+// To better cooperate with the displayResults function, add a helper function to further process the data
+function prepareDataForSheet(flattenedData, path = []) {
+  if (!flattenedData || flattenedData.length === 0) {
+    return [];
+  }
+  
+  // Make sure all rows have the same column structure
+  const allColumns = new Set();
+  flattenedData.forEach(row => {
+    Object.keys(row).forEach(col => allColumns.add(col));
+  });
+  
+  // Determine the order of submitter_id columns based on path
+  const getOrderedColumns = (columns, path) => {
+    const submitterIdColumns = [];
+    const otherColumns = [];
+    
+    // First add the submitter_id column in the order of path
+    path.forEach(nodeType => {
+      const columnName = `${nodeType}.submitter_id`;
+      if (columns.has(columnName)) {
+        submitterIdColumns.push(columnName);
+      }
+    });
+    
+    // Add a non-submitter_id column
+    columns.forEach(col => {
+      if (!col.includes('.submitter_id')) {
+        otherColumns.push(col);
+      }
+    });
+    
+    // project.code should be at the front
+    const projectCodeIndex = otherColumns.indexOf('project.code');
+    if (projectCodeIndex > -1) {
+      otherColumns.splice(projectCodeIndex, 1);
+      otherColumns.unshift('project.code');
+    }
+    
+    // Returns the sorted columns: project.code, then submitter_id in path order, and finally other columns
+    return [...otherColumns, ...submitterIdColumns];
+  };
+  
+  const orderedColumns = getOrderedColumns(allColumns, path);
+  
+  // Normalize each row to ensure all columns are present and in the correct order
+  return flattenedData.map(row => {
+    const standardizedRow = {};
+    orderedColumns.forEach(col => {
+      standardizedRow[col] = row[col] || '';
+    });
+    return standardizedRow;
+  });
 }
 
 function test(){

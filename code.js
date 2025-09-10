@@ -14,35 +14,32 @@ function deleteAllDrawingsOnActiveSheet() {
   const drawings = sheet.getDrawings();
 
   if (drawings.length === 0) {
-    SpreadsheetApp.getUi().alert("当前工作表中没有绘图对象。");
+    SpreadsheetApp.getUi().alert("There are no drawing objects in the current worksheet.");
     return;
   }
 
   const ui = SpreadsheetApp.getUi();
   const response = ui.alert(
-    '确认删除',
-    '确定要删除当前工作表中的所有 ' + drawings.length + ' 个绘图对象吗？此操作无法撤销。',
+    'Ensure to delete',
+    'Are you sure to delete ' + drawings.length + ' Drawing Objects of current sheet? This action cannot be undone.',
     ui.ButtonSet.YES_NO);
 
   if (response == ui.Button.YES) {
     for (let i = drawings.length - 1; i >= 0; i--) {
       drawings[i].remove();
     }
-    SpreadsheetApp.getUi().alert("已成功删除所有绘图对象。");
+    SpreadsheetApp.getUi().alert("All drawing objects were deleted successfully.");
   } else {
-    SpreadsheetApp.getUi().alert("操作已取消。");
+    SpreadsheetApp.getUi().alert("The operation was canceled.");
   }
 }
 
 function authorizeScript() {
-  // SpreadsheetApp.getUi().alert("authorizeScript")
   const rootFolder = DriveApp.getRootFolder();
   Logger.log("Root folder name: " + rootFolder.getName());
-  // SpreadsheetApp.getUi().alert(rootFolder.getName())
   
   const sheet = SpreadsheetApp.getActiveSpreadsheet();
   Logger.log("Spreadsheet name: " + sheet.getName());
-  // SpreadsheetApp.getUi().alert(sheet.getName())
 }
 
 // Main function to open the dialog and request the toke
@@ -69,7 +66,6 @@ function openTokenDialog() {
   }, {})
 
   // Get an array of node type IDs from the target node data
-  // TODO: Also include the descripion (key [1])
   // const nodetypes = targetNodeData.data[key].map((ele) => ele.id)
 
   // Create an HTML template from the file 'TokenDialog'
@@ -355,41 +351,44 @@ function testNormalize() {
     }
 }
 
-// /**
+
 //  * Creates a new sheet named "Upload_Metadata_Sheet" and sets the header row.
 //  */
-// function createUploadMetadataSheet() {
-//   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-//   const sheetName = "Upload_Metadata_Sheet"; 
+function createUploadMetadataSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = "Upload_Metadata_Sheet"; 
 
-//   const headers = [
-//     "file_name",
-//     "file_size",
-//     "file_source_repository",
-//     "data_category",
-//     "data_format",
-//     "data_type",
-//     "object_id",
-//     "state_comments"
-//   ];
+  const headers = [
+    "file_name",
+    "project",
+    "type",
+    "submitter_id"
+    // "file_size",
+    // "file_source_repository",
+    // "data_category",
+    // "data_format",
+    // "data_type",
+    // "object_id",
+    // "state_comments"
+  ];
 
-//   let newSheet = spreadsheet.getSheetByName(sheetName);
+  let newSheet = spreadsheet.getSheetByName(sheetName);
 
-//   newSheet = spreadsheet.insertSheet(sheetName); // 创建新 Sheet
+  newSheet = spreadsheet.insertSheet(sheetName); 
 
-//   const headerRange = newSheet.getRange(1, 1, 1, headers.length);
+  const headerRange = newSheet.getRange(1, 1, 1, headers.length);
 
-//   headerRange.setValues([headers]); // setValues 需要一个二维数组
+  headerRange.setValues([headers]); // setValues need a two dimentional array
 
-//   headerRange.setFontWeight('bold');
-//   headerRange.setBackground('#f3f3f3');
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#f3f3f3');
 
-//   newSheet.autoResizeColumns(1, headers.length);
+  newSheet.autoResizeColumns(1, headers.length);
 
-//   spreadsheet.setActiveSheet(newSheet);
+  spreadsheet.setActiveSheet(newSheet);
 
-//   SpreadsheetApp.getUi().alert(`The new "${sheetName}" sheet has been created.`);
-// }
+  SpreadsheetApp.getUi().alert(`The new "${sheetName}" sheet has been created.`);
+}
 
 function openFileUploadDialog() {
   var template = HtmlService.createTemplateFromFile('FileUploadDialog');
