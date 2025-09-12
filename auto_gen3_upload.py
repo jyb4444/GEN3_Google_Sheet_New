@@ -29,7 +29,7 @@ from typing import Iterable, Tuple, Dict, Any
 class FileProcessor:
     def __init__(self, api_url='https://dev.pvatppgmsu.com/', 
                  cred_path='/Users/kejiyuan/Desktop/credentials_dev.json',
-                 base_path=None, prog=None, proj=None):
+                 base_path=None, prog=None, proj=None, profile=None):
         """Initialize the file processor with API credentials"""
         self.api_url = api_url
         self.cred_path = cred_path
@@ -101,7 +101,7 @@ class FileProcessor:
         Call API to get node dictionary
         Returns: properties from the node dictionary
         """
-        api_url = f"https://dev.pvatppgmsu.com/api/v0/submission/_dictionary/{node}"
+        api_url = f"{self.api_url}/api/v0/submission/_dictionary/{node}"
         
         try:
             response = requests.get(api_url)
@@ -315,7 +315,6 @@ class FileProcessor:
         try:
             print(f"Uploading file: {file_path}")
             
-            # First try with gen3-client
             cmd = ['/Applications/gen3-client', 'upload', '--profile=poxdc', f'--upload-path={base_path}{file_path}']
             print("@@@@@@@@@@@@@@@@@@@@@@@@")
             print(cmd)
@@ -738,12 +737,13 @@ def main():
     parser = argparse.ArgumentParser(description='Process and upload files to Gen3 data commons')
     parser.add_argument('filename', help='Path to the TSV file to process')
     parser.add_argument('--base-path', type=str, help='Base path where data files are located (required for datafile processing)')
-    parser.add_argument('--api-url', type=str, default='https://dev.pvatppgmsu.com/', 
+    parser.add_argument('--api-url', type=str, required=True, default='https://dev.pvatppgmsu.com/', 
                        help='API URL for Gen3 data commons')
-    parser.add_argument('--cred-path', type=str, default='/Users/kejiyuan/Desktop/credentials_ppg.json',
+    parser.add_argument('--cred-path', type=str, required=True, default='/Users/kejiyuan/Desktop/credentials_ppg.json',
                        help='Path to credentials JSON file')
     parser.add_argument('--prog', type=str, required=True, help='Program name (e.g., TRAINING)')
     parser.add_argument('--proj', type=str, required=True, help='Project name (e.g., training001)')
+    parser.add_argument('--profile', type=str, required=True, help='Profile name (e.g., poxdc)')
     
     args = parser.parse_args()
 
@@ -769,7 +769,8 @@ def main():
         cred_path=args.cred_path,
         base_path=args.base_path,
         prog =args.prog,
-        proj=args.proj
+        proj=args.proj,
+        profile=args.profile
     )
 
     try:
