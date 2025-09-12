@@ -34,6 +34,7 @@ You can use the following command line parameters to run the python script.
 | `--cred-path` | ✅        | Credential JSON file path
 | `--base-path` | ⚠️        | The directory where the data files are located. This is only required when processing `datafile.tsv` 
 | `--profile`   | ✅        | Profile name like `poxdc`
+
 For example, if you want to upload the node file, you can run "python auto_gen3_upload.py /Users/kejiyuan/Desktop/auto_gen3_handler/ppg_training/PPG-PPGTEST-subject.tsv --api-url https://dev.pvatppgmsu.com/ --cred-path /Users/kejiyuan/Desktop/credentials_ppg.json --prog PPG --proj PPGTEST --profile poxdc"
 Or if you want to upload the datafile, you can run "python auto_gen3_upload.py PPG-PPGTEST-DataFile.tsv --base-path /Users/kejiyuan/Desktop/auto_gen3_handler/Training/TRAINING/DataFiles/ --api-url https://dev.pvatppgmsu.com/ --cred-path /Users/kejiyuan/Desktop/credentials_ppg.json --prog PPG --proj PPGTEST --profile poxdc"
 
