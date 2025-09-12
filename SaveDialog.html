@@ -37,6 +37,7 @@
         border-radius: 5px;
         cursor: pointer;
         font-size: 1em;
+        position: relative;
     }
 
     .submit-button {
@@ -44,8 +45,13 @@
         color: white;
     }
 
-    .submit-button:hover {
+    .submit-button:hover:not(:disabled) {
         background-color: #4cae4c;
+    }
+
+    .submit-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
     }
 
     .cancel-button {
@@ -53,8 +59,40 @@
         color: white;
     }
 
-    .cancel-button:hover {
+    .cancel-button:hover:not(:disabled) {
         background-color: #c9302c;
+    }
+
+    .cancel-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+
+    /* Loading spinner styles */
+    .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #ffffff;
+        border-top: 2px solid transparent;
+        border-radius: 50%;
+        display: inline-block;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        color: #666;
+        margin-top: 20px;
+        font-style: italic;
+    }
+
+    .hidden {
+        display: none;
     }
   </style>
 </head>
@@ -62,16 +100,44 @@
     <div class="container">
         <div class="prompt">Save as '.tsv' file and Ready to submit to Gen3</div>
         <div class="button-container">
-            <button class="button submit-button" onclick="handleSubmit()">Submit</button>
-            <button class="button cancel-button" onclick="google.script.host.close()">Cancel</button>
+            <button class="button submit-button" id="submitBtn" onclick="handleSubmit()">
+                <span id="submitText">Submit</span>
+            </button>
+            <button class="button cancel-button" id="cancelBtn" onclick="google.script.host.close()">Cancel</button>
         </div>
+        <div class="loading-text hidden" id="loadingText">Submitting file, please wait...</div>
     </div>
 
     <script>
       function handleSubmit() {
+        // Get button elements
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const submitText = document.getElementById('submitText');
+        const loadingText = document.getElementById('loadingText');
+        
+        // Disable buttons and show loading state
+        submitBtn.disabled = true;
+        cancelBtn.disabled = true;
+        
+        // Add spinner to submit button
+        submitText.innerHTML = '<span class="spinner"></span>Submitting...';
+        
+        // Show loading message
+        loadingText.classList.remove('hidden');
+        
         google.script.run
           .withSuccessHandler(function(response) {
               console.log("Submission result:", response);
+              
+              // Hide loading state
+              loadingText.classList.add('hidden');
+              
+              // Reset button state
+              submitText.innerHTML = 'Submit';
+              submitBtn.disabled = false;
+              cancelBtn.disabled = false;
+              
               alert(response); 
               if (response.startsWith("TSV file")) { 
                   google.script.host.close();
@@ -79,11 +145,19 @@
           })
           .withFailureHandler(function(error) {
               console.error("Submission failed:", error);
+              
+              // Hide loading state
+              loadingText.classList.add('hidden');
+              
+              // Reset button state
+              submitText.innerHTML = 'Submit';
+              submitBtn.disabled = false;
+              cancelBtn.disabled = false;
+              
               alert("Submission failed. Please try again. Error: " + error); 
           })
-          .saveToGoogleDrive();
+          .saveToS3();
         }
-
     </script>
   </body>
 </html>

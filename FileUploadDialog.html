@@ -146,7 +146,7 @@
         
         <div style="text-align: center; margin-top: 20px;">
             <button class="btn" id="uploadBtn" onclick="uploadSelectedFiles()" disabled>Upload File</button>
-            <button class="btn" style="background-color: #666;" onclick="google.script.host.close()">Cancel</button>
+            <button id="cancelBtn" class="btn" style="background-color: #666;" onclick="google.script.host.close()">Cancel</button>
         </div>
     </div>
 
@@ -159,6 +159,7 @@
         const fileName = document.getElementById('fileName');
         const fileDetails = document.getElementById('fileDetails');
         const uploadBtn = document.getElementById('uploadBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
         const message = document.getElementById('message');
@@ -288,6 +289,7 @@
                     messageText += `• ${f.fileName} (ID: ${f.result.fileId})<br>`;
                 });
                 messageClass = 'success';
+                cancelBtn.style.display = 'none';
             }
             
             if (failedFiles.length > 0) {

@@ -2,78 +2,6 @@ function getPropertiesName(properties){
   return Object.keys(properties)
 }
 
-function findSubmitterIdsForNode(currentData, targetNodeName, results = []) {
-  if (!currentData) {
-    return results; // 边界条件：如果当前数据为 null/undefined，则返回
-  }
-
-  // 如果当前数据是数组，遍历数组元素
-  if (Array.isArray(currentData)) {
-    currentData.forEach((item) => {
-      // 递归调用自身，因为数组的每个元素可能都是一个对象，包含我们要找的节点
-      findSubmitterIdsForNode(item, targetNodeName, results);
-    });
-  }
-  // 如果当前数据是对象
-  else if (typeof currentData === "object") {
-    // 1. 检查当前对象是否就是我们要找的 targetNodeName
-    // 这适用于 targetNodeName 是一个对象内部的属性名，且该属性的值可能包含 submitter_id
-    // 比如 currentData 是 study 对象，targetNodeName 是 subjects
-    if (currentData[targetNodeName]) {
-      // 如果 targetNodeName 对应的值是数组，遍历它
-      if (Array.isArray(currentData[targetNodeName])) {
-        currentData[targetNodeName].forEach((nestedItem) => {
-          if (nestedItem && nestedItem.submitter_id) {
-            results.push(nestedItem.submitter_id);
-          }
-          // 递归查找嵌套更深的 submitter_id
-          findSubmitterIdsForNode(nestedItem, targetNodeName, results); // 例如 subjects 内部可能还有 treatments
-        });
-      }
-      // 如果 targetNodeName 对应的值是对象，直接检查 submitter_id
-      else if (
-        typeof currentData[targetNodeName] === "object" &&
-        currentData[targetNodeName] !== null
-      ) {
-        if (currentData[targetNodeName].submitter_id) {
-          results.push(currentData[targetNodeName].submitter_id);
-        }
-        // 递归查找更深的 submitter_id
-        findSubmitterIdsForNode(
-          currentData[targetNodeName],
-          targetNodeName,
-          results
-        );
-      }
-    }
-
-    // 2. 检查当前对象本身是否包含 submitter_id，并且它可能是一个父节点
-    // 这适用于 targetNodeName 像 'studies' 这样直接在顶层数组中
-    // 并且数组的每个元素 (study) 本身就含有 submitter_id
-    if (
-      currentData.submitter_id &&
-      Object.keys(currentData).includes(targetNodeName)
-    ) {
-      // 确保这个 submitter_id 确实是属于这个 'parentNode' 级别的
-      // 这里需要根据实际情况调整逻辑
-      // 对于 'studies'，我们已经通过 Array.isArray(data.studies) 处理了
-      // 如果 targetNodeName 是 currentData 的一个键，并且 currentData 有 submitter_id，
-      // 那么这个 submitter_id 就应该被考虑
-      // 然而，更常见的是，submitter_id 属于 targetNodeName 指向的那个对象或数组的元素
-      // 所以我们更关注 currentData[targetNodeName] 的内容
-    }
-
-    // 遍历当前对象的所有属性，继续递归查找
-    for (const key in currentData) {
-      if (Object.prototype.hasOwnProperty.call(currentData, key)) {
-        findSubmitterIdsForNode(currentData[key], targetNodeName, results);
-      }
-    }
-  }
-
-  return results;
-}
-
 function generateParentSubmitterIdColumnName(pluralNodeName) {
   let singularNodeName = "";
   if (pluralNodeName.endsWith("ies")) {
@@ -97,12 +25,11 @@ function displayResults(node, data, properties, hiddenProperties) {
     //   return;
     // }
     
-    // 新的数据结构是一个对象数组
     if (!data || data.length === 0) {
       Logger.log("No data available.");
       return;
     }
-
+    // SpreadsheetApp.getUi().alert(JSON.stringify(data))
     const columnNames = buildColumnNames(node, properties, hiddenProperties, data);
     setupSheet(sheet, columnNames, properties, hiddenProperties);
     insertData(sheet, data, columnNames);
@@ -149,13 +76,16 @@ function buildColumnNames(node, properties, hiddenProperties, data = []) {
   const { submitterIdColumns, otherColumns } = separateSubmitterIdColumns(visibleProperties);
   
   // Process plural column names to "columnName.submitter_id" format
-  const processedColumns = processPluralColumns(otherColumns);
+  // const processedColumns = processPluralColumns(otherColumns);
+  const processedColumns = otherColumns;
   
   // 将数据中的列名加入到列名列表中
   const dataColumnsList = Array.from(dataColumns);
-  
+  // SpreadsheetApp.getUi().alert(JSON.stringify(dataColumnsList))
+  // SpreadsheetApp.getUi().alert(JSON.stringify(submitterIdColumns))
+  // SpreadsheetApp.getUi().alert(JSON.stringify(processedColumns))
   // Combine all columns: data columns first, then submitter_id columns, then processed columns
-  let allProcessedColumns = [...dataColumnsList, ...submitterIdColumns, ...processedColumns];
+  let allProcessedColumns = [...dataColumnsList, ...processedColumns];
   
   // Remove duplicate column names
   const uniqueColumns = removeDuplicateColumns(allProcessedColumns);
@@ -256,8 +186,8 @@ function setupNote(sheet, propertyConfig, columnIndex) {
 
 function insertData(sheet, nodeDataArray, columnNames) {
   const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  const processedData = processDataForInsertion(nodeDataArray);
+  // SpreadsheetApp.getUi().alert(JSON.stringify(columnNames))
+  const processedData = processDataForInsertion(nodeDataArray, columnNames);
   
   if (processedData.length > 0) {
     insertProcessedData(sheet, processedData, currentHeaders);
@@ -266,43 +196,32 @@ function insertData(sheet, nodeDataArray, columnNames) {
   }
 }
 
-function processDataForInsertion(nodeDataArray) {
-  // 首先收集所有的列名（属性名）
-  const allColumns = new Set();
+function processDataForInsertion(nodeDataArray, columnNames) {
+  const allColumns = new Set(columnNames);
   const columnValues = {};
   
-  // 遍历数组，收集所有属性名和对应的值
+  allColumns.forEach(column => {
+    columnValues[column] = [];
+  });
+  // SpreadsheetApp.getUi().alert(JSON.stringify(nodeDataArray))
   nodeDataArray.forEach(item => {
-    Object.keys(item).forEach(key => {
-      allColumns.add(key);
-      if (!columnValues[key]) {
-        columnValues[key] = [];
+    allColumns.forEach(key => {
+      if (item.hasOwnProperty(key)) {
+        columnValues[key].push(item[key]);
+      } else {
+        columnValues[key].push('');
       }
-      columnValues[key].push(item[key]);
     });
   });
   
-  // 找出最长的值数组长度，这将决定行数
-  const maxRows = Math.max(...Object.values(columnValues).map(arr => arr.length));
+  const maxRows = nodeDataArray.length;
   
-  // 构建行数据
   const processedData = [];
   for (let i = 0; i < maxRows; i++) {
     const rowData = {};
     
-    // 为每一列填充值
     allColumns.forEach(column => {
-      if (columnValues[column] && columnValues[column].length > 0) {
-        // 如果该列只有一个值（如 project.code），则在所有行中重复这个值
-        if (columnValues[column].length === 1) {
-          rowData[column] = columnValues[column][0];
-        } else {
-          // 如果该列有多个值，按索引取值，超出范围则为空
-          rowData[column] = columnValues[column][i] || '';
-        }
-      } else {
-        rowData[column] = '';
-      }
+      rowData[column] = columnValues[column][i] || '';
     });
     
     processedData.push(rowData);
