@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body, html {
+        height: 100%;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      h2 {
+        margin-top: 0;
+        color: #333;
+        font-size: 1.5em;
+      }
+
+      .info-box {
+        background-color: #e8f4fd;
+        border-left: 4px solid #2196F3;
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+      }
+
+      .info-box p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: #555;
+      }
+
+      .expected-files {
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 20px;
+        max-height: 150px;
+        overflow-y: auto;
+      }
+
+      .expected-files h3 {
+        margin: 0 0 10px 0;
+        font-size: 1em;
+        color: #666;
+      }
+
+      .expected-files ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .expected-files li {
+        margin: 5px 0;
+        font-family: monospace;
+        font-size: 0.9em;
+      }
+
+      .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 4px;
+        padding: 30px;
+        text-align: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .upload-area:hover {
+        border-color: #2196F3;
+        background-color: #f0f8ff;
+      }
+
+      .upload-area.dragover {
+        border-color: #2196F3;
+        background-color: #e3f2fd;
+      }
+
+      .upload-icon {
+        font-size: 3em;
+        color: #ccc;
+        margin-bottom: 10px;
+      }
+
+      .upload-text {
+        color: #666;
+        margin-bottom: 10px;
+      }
+
+      #fileInput {
+        display: none;
+      }
+
+      .file-list {
+        margin-bottom: 20px;
+      }
+
+      .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+
+      .file-name {
+        flex-grow: 1;
+        font-family: monospace;
+        font-size: 0.9em;
+        color: #333;
+      }
+
+      .file-status {
+        margin-left: 10px;
+        font-size: 0.85em;
+      }
+
+      .file-status.valid {
+        color: #5cb85c;
+      }
+
+      .file-status.invalid {
+        color: #d9534f;
+      }
+
+      .remove-btn {
+        margin-left: 10px;
+        background-color: #d9534f;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 0.85em;
+      }
+
+      .remove-btn:hover {
+        background-color: #c9302c;
+      }
+
+      .button-container {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 20px;
+      }
+
+      .button {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+        min-width: 120px;
+      }
+
+      .submit-button {
+        background-color: #5cb85c;
+        color: white;
+      }
+
+      .submit-button:hover:not(:disabled) {
+        background-color: #4cae4c;
+      }
+
+      .submit-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      .cancel-button {
+        background-color: #d9534f;
+        color: white;
+      }
+
+      .cancel-button:hover {
+        background-color: #c9302c;
+      }
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #ffffff;
+        border-top: 2px solid transparent;
+        border-radius: 50%;
+        display: inline-block;
+        animation: spin 1s linear infinite;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .error-message {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Upload Files to Gen3</h2>
+      
+      <div class="info-box">
+        <p><strong>Note:</strong> Files will be automatically timestamped before submission.</p>
+        <p>Timestamp format: MM/DD/YYYY (e.g., file_12182025.txt)</p>
+      </div>
+
+      <div class="expected-files">
+        <h3>Expected Files:</h3>
+        <ul id="expectedFilesList"></ul>
+      </div>
+
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">Click to select files or drag and drop here</div>
+        <div style="color: #999; font-size: 0.85em;">Multiple files supported</div>
+        <input type="file" id="fileInput" multiple>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div class="error-message hidden" id="errorMessage"></div>
+
+      <div class="button-container">
+        <button class="button submit-button" id="submitBtn" onclick="handleSubmit()">
+          <span id="submitText">Submit</span>
+        </button>
+        <button class="button cancel-button" onclick="google.script.host.close()">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Expected files from server
+      const expectedFiles = <?!= expectedFiles ?>;
+      let uploadedFiles = [];
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', function() {
+        displayExpectedFiles();
+        setupDragAndDrop();
+        setupFileInput();
+      });
+
+      function displayExpectedFiles() {
+        const list = document.getElementById('expectedFilesList');
+        expectedFiles.forEach(fileName => {
+          const li = document.createElement('li');
+          li.textContent = fileName;
+          list.appendChild(li);
+        });
+      }
+
+      function setupDragAndDrop() {
+        const uploadArea = document.getElementById('uploadArea');
+
+        uploadArea.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+          e.preventDefault();
+          uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+          e.preventDefault();
+          uploadArea.classList.remove('dragover');
+          handleFiles(e.dataTransfer.files);
+        });
+      }
+
+      function setupFileInput() {
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', function(e) {
+          handleFiles(e.target.files);
+        });
+      }
+
+      function handleFiles(files) {
+        Array.from(files).forEach(file => {
+          // Check if file already exists
+          const exists = uploadedFiles.some(f => f.name === file.name);
+          if (exists) {
+            return;
+          }
+
+          // Read file content
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const fileData = {
+              name: file.name,
+              content: e.target.result.split(',')[1], // Base64 content
+              mimeType: file.type,
+              size: file.size,
+              status: 'pending' // pending | uploading | done | error
+            };
+            uploadedFiles.push(fileData);
+            updateFileList();
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function updateFileList() {
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '';
+
+        if (uploadedFiles.length === 0) {
+          return;
+        }
+
+        uploadedFiles.forEach((file, index) => {
+          const isValid = expectedFiles.includes(file.name);
+          
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-item';
+          
+          const fileName = document.createElement('span');
+          fileName.className = 'file-name';
+          fileName.textContent = file.name;
+          
+          const status = document.createElement('span');
+          status.className = `file-status ${isValid ? 'valid' : 'invalid'}`;
+          status.textContent = isValid ? '✓ Valid' : '✗ Not expected';
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'remove-btn';
+          removeBtn.textContent = 'Remove';
+          removeBtn.onclick = function() {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+          };
+          
+          fileItem.appendChild(fileName);
+          fileItem.appendChild(status);
+          fileItem.appendChild(removeBtn);
+          fileList.appendChild(fileItem);
+        });
+
+        // Hide error message when files change
+        document.getElementById('errorMessage').classList.add('hidden');
+      }
+
+      function validateFiles() {
+        const uploadedNames = uploadedFiles.map(f => f.name);
+        const missing = expectedFiles.filter(name => !uploadedNames.includes(name));
+        const extra = uploadedNames.filter(name => !expectedFiles.includes(name));
+
+        if (missing.length > 0 || extra.length > 0) {
+          let message = '';
+          
+          if (missing.length > 0) {
+            message += 'Missing files:\n' + missing.join('\n') + '\n\n';
+          }
+          
+          if (extra.length > 0) {
+            message += 'Unexpected files:\n' + extra.join('\n');
+          }
+          
+          return { valid: false, message: message };
+        }
+
+        return { valid: true };
+      }
+
+      function handleSubmit() {
+        // Clear previous errors
+        const errorMsg = document.getElementById('errorMessage');
+        errorMsg.classList.add('hidden');
+
+        // Validate files
+        const validation = validateFiles();
+        if (!validation.valid) {
+          errorMsg.textContent = validation.message;
+          errorMsg.classList.remove('hidden');
+          return;
+        }
+
+        if (uploadedFiles.length === 0) {
+          errorMsg.textContent = 'Please upload at least one file.';
+          errorMsg.classList.remove('hidden');
+          return;
+        }
+
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        
+        submitBtn.disabled = true;
+        submitText.innerHTML = '<span class="spinner"></span>Submitting...';
+
+        // Submit to server
+        google.script.run
+          .withSuccessHandler(function(response) {
+            submitText.innerHTML = 'Submit';
+            submitBtn.disabled = false;
+
+            if (response.success) {
+              // alert(response.message);
+              alert("Your metadata will be uploaded to the data commons. Once you select 'OK' please wait 2-5 minutes for changes to propagate within the system.");
+              google.script.host.close();
+            } else {
+              errorMsg.textContent = response.message;
+              errorMsg.classList.remove('hidden');
+            }
+          })
+          .withFailureHandler(function(error) {
+            submitText.innerHTML = 'Submit';
+            submitBtn.disabled = false;
+            
+            errorMsg.textContent = 'Submission failed: ' + error;
+            errorMsg.classList.remove('hidden');
+          })
+          .submitFilesToS3(uploadedFiles);
+      }
+    </script>
+  </body>
+</html>

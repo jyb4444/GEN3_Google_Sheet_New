@@ -121,10 +121,43 @@
             color: #666;
             margin-top: 10px;
         }
+
+        .profile-container {
+            margin-bottom: 20px;
+        }
+        
+        .profile-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .profile-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box; 
+            transition: border-color 0.3s;
+        }
+        
+        .profile-input:focus {
+            border-color: #4285f4;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(66,133,244,0.1);
+        }
     </style>
 </head>
 <body>
     <div class="upload-container">
+        <div class="profile-container">
+            <label class="profile-label" for="profileInput">Datacommons URL</label>
+            <input type="text" id="profileInput" class="profile-input" placeholder="Please enter your Datacommons URL here...">
+        </div>
+
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📁</div>
             <div class="upload-text">Click to select a file or drag and drop the file here</div>
@@ -151,6 +184,13 @@
     </div>
 
     <script>
+        const profileMap = {
+          "https://dev.pvatppgmsu.com/": "msu-gen3-dev-pvatppgmsu-data",
+          "https://data.pvatppgmsu.com/": "msu-gen3-prod-pvatppgmsu-data",
+          "https://dev.toxdatacommons.com/": "msu-gen3-dev-toxdc-data",
+          "https://toxdatacommons.com/": "msu-gen3-prod-toxdc-data"
+        }
+
         let selectedFiles = [];
         
         const uploadArea = document.getElementById('uploadArea');
@@ -216,6 +256,30 @@
         }
         
         function uploadSelectedFiles() {
+            const userInput = profileInput.value.trim();
+
+            const matchedKey = Object.keys(profileMap)
+              .find(key => key.includes(userInput));
+
+            if (!matchedKey) {
+              message.innerHTML =
+                "The entered profile is incorrect. Please re-enter the profile or contact the administrator to obtain the correct profile.";
+              message.className = 'message error';
+              message.style.display = 'block';
+              return;
+            }
+
+            const targetBucket = profileMap[matchedKey];
+
+            google.script.run
+              .withSuccessHandler(function(response) {
+
+              })
+              .withFailureHandler(function(err) {
+                  alert("Save bucket failed: " + err);
+              })
+              .saveTargetBucket(targetBucket);
+
             if (selectedFiles.length === 0) return;
             
             uploadBtn.disabled = true;
@@ -304,6 +368,13 @@
             message.innerHTML = messageText;
             message.className = 'message ' + messageClass;
             message.style.display = 'block';
+
+            if (successFiles.length > 0 && failedFiles.length === 0) {
+                message.innerHTML += "<br><strong>Window will close automatically in 2 seconds...</strong>";
+                setTimeout(() => {
+                    google.script.host.close();
+                }, 2000); 
+            }
             
             selectedFiles = [];
             fileInput.value = '';

@@ -1,3 +1,10 @@
+const ENV_CONFIG = {
+  "https://dev.pvatppgmsu.com/": "msu-gen3-dev-pvatppgmsu-data",
+  "https://data.pvatppgmsu.com/": "msu-gen3-prod-pvatppgmsu-data",
+  "https://dev.toxdatacommons.com/": "msu-gen3-dev-toxdc-data",
+  "https://toxdatacommons.com/": "msu-gen3-prod-toxdc-data"
+}
+
 // 1. Modify the processing function after successful upload and save the file ID
 // function uploadFileToDrive(fileData=fileData1, fileName=fileName1, mimeType=mimeType1) {
 function uploadFileToDrive(fileData, fileName, mimeType) {
@@ -42,6 +49,15 @@ function uploadFileToDrive(fileData, fileName, mimeType) {
 // 2. getAuthProvider function to obtain the file ID from PropertiesService
 function getAuthProvider() {
   try {
+    const savedBucket = PropertiesService.getScriptProperties().getProperty('CURRENT_TARGET_BUCKET');
+    const dynamicEndpoint = Object.keys(ENV_CONFIG).find((ele) => ENV_CONFIG[ele] === savedBucket);
+    // SpreadsheetApp.getUi().alert(savedBucket)
+    // SpreadsheetApp.getUi().alert(dynamicEndpoint)
+    if(!dynamicEndpoint){
+      SpreadsheetApp.getUi().alert("Please check your profile name")
+      return;
+    }
+
     // First try to get the saved file ID from PropertiesService
     let fileId = PropertiesService.getScriptProperties().getProperty('AUTH_FILE_ID');
     Logger.log(fileId)
@@ -64,7 +80,7 @@ function getAuthProvider() {
       }
       
       return {
-        endpoint: "https://dev.toxdatacommons.com",
+        endpoint: dynamicEndpoint,
         accessToken: jsonData.api_key,
         keyId: jsonData.key_id
       };
@@ -95,4 +111,17 @@ function getCurrentAuthFileId() {
 function clearAuthFileId() {
   PropertiesService.getScriptProperties().deleteProperty('AUTH_FILE_ID');
   Logger.log('Auth file ID cleared');
+}
+
+function clearSpecificProperties() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+
+  scriptProperties.deleteProperty("node");
+  Logger.log('Property "node" cleared.');
+
+  scriptProperties.deleteProperty("study");
+  Logger.log('Property "study" cleared.');
+
+  scriptProperties.deleteProperty("project");
+  Logger.log('Property "project" cleared.');
 }

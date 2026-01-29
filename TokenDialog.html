@@ -7,12 +7,23 @@
           display: flex;
           flex-direction: column;
           flex-grow: 1;
-          height: 100%; 
           padding: 20px;
           font-family: Arial, sans-serif;
         }
+
+        html,
+        body,
+        form,
+        .container,
+        .form-group {
+          overflow: visible;
+        }
+
         .form-group {
             margin-bottom: 15px;
+            min-height: auto;
+            overflow: visible;
+            flex-shrink: 0;
         }
         label {
             display: block;
@@ -49,7 +60,7 @@
         }
 
         input[type="submit"] {
-          margin-top: auto; /* 将 Submit 按钮推到表单底部 */
+          margin-top: auto; 
           background-color: #4CAF50;
           color: white;
           padding: 10px 15px;
@@ -59,7 +70,7 @@
         }
 
         .loader {
-            display: none; /* Initially hidden */
+            display: none; 
             position: fixed;
             left: 40%;
             top: 40%;
@@ -77,10 +88,54 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Initially hide the second dropdown */
         #dropdown2Container {
             display: none;
         }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 1px solid #cfd4dc;
+            border-radius: 6px;
+            background-color: #ffffff;
+            color: #222;
+            appearance: auto;          
+            max-height: none;
+            position: relative;
+            z-index: 10;
+        }
+
+        select:hover {
+            border-color: #4CAF50;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        select option[value=""] {
+            color: #999;
+        }
+
+        select option {
+            padding: 8px 12px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        select option:checked {
+            background-color: #e8f5e9;
+            color: #000;
+        }
+
+        select option:hover {
+            background-color: #f1f8f4;
+        }
+
     </style>
 </head>
 <body>
@@ -149,11 +204,12 @@
                     option.text = `${project.project_id} - ${project.description || 'No description'}`;
                     dropdown1.add(option);
                 });
-
+                
+                const GAP = "\u2003\u2003";
                 nodeData.forEach((node, index) => {
                     const option = document.createElement('option');
                     option.value = nodeIdMatch[node.split("-")[0]];
-                    option.text = node;
+                    option.text = `${node.split("-")[0]}` + `:${GAP}` + `${node}`;
                     dropdown3.add(option);
                 });
 
@@ -238,7 +294,7 @@
                     .withFailureHandler(function(error){
                       document.getElementById('loader').style.display = 'none';
                     })
-                    .displayResults(formData.nodeType, data[0], data[1], data[2])
+                    .displayResults(formData.nodeType, data[0], data[1], data[2], data[3])
 
                 } catch (error) {
                     alert('Error processing response: ' + error.message);

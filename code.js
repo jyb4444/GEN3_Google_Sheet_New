@@ -1,12 +1,46 @@
 function onOpen() {  
   var ui = SpreadsheetApp.getUi();
   DriveApp.getRootFolder();
-  ui.createMenu('ToxDataCommons')
-    .addItem('Create Gen3 Template', 'openTokenDialog')
-    .addItem('Save as .tsv file', 'openSaveDialog')
-    .addItem('Upload Metadata', 'createUploadMetadataSheet')
-    .addItem('Authentication', 'openFileUploadDialog')
+  ui.createMenu('Gen3DataCommons')
+    .addItem('Authenticate session', 'openFileUploadDialog')
+    .addSeparator()
+    .addItem('Populate metadata template', 'openTokenDialog')
+    .addSeparator()
+    .addItem('Create data files manifest', 'createUploadMetadataSheet')
+    .addSeparator()
+    .addItem('Submit to knowledgebase', 'showSubmitDialog')
+    .addSeparator()
+    .addItem('Download', 'downloadActiveSheet')
     .addToUi();
+}
+
+function showSubmitDialog() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  
+  if (sheetName === 'Upload_Metadata_Sheet') {
+    showFileUploadDialog();
+  } else {
+    showConfirmDialog();
+  }
+}
+
+function showConfirmDialog() {
+  const html = HtmlService.createHtmlOutputFromFile('SaveDialog')
+    .setWidth(400)
+    .setHeight(200);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Confirm Submission');
+}
+
+function showFileUploadDialog() {
+  const expectedFiles = getExpectedFileNames();
+  const template = HtmlService.createTemplateFromFile('MetaDataFileUploadDialog');
+  template.expectedFiles = JSON.stringify(expectedFiles);
+  
+  const html = template.evaluate()
+    .setWidth(600)
+    .setHeight(500);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Upload Files');
 }
 
 function deleteAllDrawingsOnActiveSheet() {
@@ -95,64 +129,10 @@ function openSaveDialog(){
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Save and Submit');
 }
 
-// Function to get the auth provider using the credentials JSON
-// TODO: Try the following:
-// 1. Set key as user property (user pastes json value) 
-//   PropertiesService.getUserProperties().setProperty('token', 'abc123');
-//   let token = PropertiesService.getUserProperties().getProperty('token');
-// 2. Cache method (user pastes again
-//   const cache = CacheService.getUserCache(); // or getScriptCache()
-//   cache.put('mySessionKey', 'mySessionValue', 1800); // Expires in 30 min
-//   let val = cache.get('mySessionKey');
-// 3. Set as fixed drive path (e.g., must be gdrive://gen3creds/credentials.json)
-
-// function getAuthProvider() {
-//   try {
-//     const fileId = '15QBC5TA9Hg7fVat-Xjra_cr6xAV6L0Wi'; //keji dev.toxdatacommon
-//     // const fileId = '12PhJxjN3fLofYOjGxqYuMVuA2TTeSh2i'; //keji
-//     // const fileId = '1_hF1BLLni4ipHiPld77L6EcIEu2TA0pu'; 
-
-//     let file;
-//     try {
-//       file = DriveApp.getFileById(fileId);
-//       Logger.log(file.getName())
-//       // SpreadsheetApp.getUi().alert(file.getName())
-//       // SpreadsheetApp.getUi().alert(`file:  ${JSON.stringify(file)}`)
-//     } catch (e) {
-//       Logger.log('The file specified cannot be found. Please check if the file ID is correct.');
-//       Logger.log('Current file id: ' + fileId);
-//       throw new Error('File access failed 111:' + e.message);
-//     }
-
-//     try {
-//       const content = file.getBlob().getDataAsString();
-//       // SpreadsheetApp.getUi().alert(JSON.stringify(content))
-//       // Logger.log(JSON.stringify(content))
-//       const jsonData = JSON.parse(content);
-      
-//       if (!jsonData.api_key || !jsonData.key_id) {
-//         throw new Error('Credentials file is missing a required field (api_key or key_id)');
-//       }
-//       // Logger.log(JSON.stringify(jsonData))
-//       // SpreadsheetApp.getUi().alert(JSON.stringify(jsonData))
-//       return {
-//         endpoint: "https://dev.toxdatacommons.com",
-//         accessToken: jsonData.api_key,
-//         keyId: jsonData.key_id
-//       };
-//     } catch (e) {
-//       Logger.log('Parsing of file content failed. Please make sure the file contains valid JSON data');
-//       throw new Error('File format error:' + e.message);
-//     }
-//   } catch (error) {
-//     Logger.log('Error Detail：' + error.toString());
-//     throw error;
-//   }
-// }
-
 // Function to get access token using refresh token
 function getAccessToken(authProvider) {
     const url = `${authProvider.endpoint}/user/credentials/cdis/access_token`;
+    // SpreadsheetApp.getUi().alert(url)
     const options = {
         method: 'POST',
         headers: {
@@ -168,9 +148,7 @@ function getAccessToken(authProvider) {
     
     try {
         const response = UrlFetchApp.fetch(url, options);
-        // SpreadsheetApp.getUi().alert(authProvider.keyId)
-        // SpreadsheetApp.getUi().alert(JSON.stringify(authProvider))
-        // SpreadsheetApp.getUi().alert(response.getResponseCode())
+
         if (response.getResponseCode() === 200) {
             const tokenData = JSON.parse(response.getContentText());
             // SpreadsheetApp.getUi().alert(JSON.stringify(tokenData))
@@ -184,8 +162,6 @@ function getAccessToken(authProvider) {
     }
 }
 
-// TODO: Move Gen3-SDK functions into jsGen3-SDK.js
-// Function to execute a GraphQL query
 function executeGraphQLQuery(authProvider, queryString) {
   const accessToken = getAccessToken(authProvider)
   const url = `${authProvider.endpoint}/api/v0/submission/graphql/`; 
@@ -216,7 +192,6 @@ function executeGraphQLQuery(authProvider, queryString) {
   }
 }
 
-// Function to fetch subject data and render it in Google Sheets
 function fetchSubjectData() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var authProvider = getAuthProvider(); 
@@ -374,6 +349,12 @@ function createUploadMetadataSheet() {
 
   let newSheet = spreadsheet.getSheetByName(sheetName);
 
+  if (newSheet) {
+    spreadsheet.setActiveSheet(newSheet);
+    // SpreadsheetApp.getUi().alert(`The "${sheetName}" sheet already exists and has been activated.`);
+    return;
+  }
+
   newSheet = spreadsheet.insertSheet(sheetName); 
 
   const headerRange = newSheet.getRange(1, 1, 1, headers.length);
@@ -467,3 +448,95 @@ function openFileUploadDialog() {
 //     };
 //   }
 // }
+
+function downloadActiveSheet() {
+  try {
+    var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    var activeSheet = spreadsheet.getActiveSheet();
+    var ui = SpreadsheetApp.getUi();
+    
+    let node = PropertiesService.getScriptProperties().getProperty("node");
+    let study = PropertiesService.getScriptProperties().getProperty("study");
+    let project = PropertiesService.getScriptProperties().getProperty("project");
+    
+    var fileName;
+    var currentSheetName = activeSheet.getName();
+    
+    if (project && study && node) {
+      if (currentSheetName === "Upload_Metadata_Sheet") {
+        study = study.split("-")[0];
+        project = project.split("-")[0];
+        fileName = project + "-" + study + "-datafile.tsv";
+      } else {
+        node = node.split("-")[0];
+        study = study.split("-")[0];
+        project = project.split("-")[0];
+        
+        fileName = project + "-" + study + "-" + node + ".tsv";
+      }
+    } else {
+      var response = ui.prompt(
+        'Custom File Name',
+        'Project, Study, or Node information is missing.\nPlease enter a file name (without .tsv extension):',
+        ui.ButtonSet.OK_CANCEL
+      );
+      
+      if (response.getSelectedButton() == ui.Button.OK) {
+        var customName = response.getResponseText().trim();
+        
+        if (customName === '') {
+          ui.alert('Error', 'File name cannot be empty. Using sheet name as default.', ui.ButtonSet.OK);
+          fileName = currentSheetName + '.tsv';
+        } else {
+          customName = customName.replace(/\.tsv$/i, '');
+          fileName = customName + '.tsv';
+        }
+      } else {
+        ui.alert('Cancelled', 'Download cancelled. No file was created.', ui.ButtonSet.OK);
+        return {
+          success: false,
+          message: 'Download cancelled by user.'
+        };
+      }
+    }
+    
+    var url = "https://docs.google.com/spreadsheets/d/" + spreadsheet.getId() + 
+              "/export?format=tsv&gid=" + activeSheet.getSheetId();
+    
+    var token = ScriptApp.getOAuthToken();
+    var response = UrlFetchApp.fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    });
+    
+    var blob = response.getBlob()
+                       .setName(fileName)
+                       .setContentType('text/tab-separated-values');
+    
+    var file = DriveApp.createFile(blob);
+    
+    ui.alert('Success', 
+             'Sheet has been saved to Google Drive!\n\n' +
+             'File name: ' + fileName + '\n' +
+             'File URL: ' + file.getUrl(), 
+             ui.ButtonSet.OK);
+    
+    return {
+      success: true,
+      fileId: file.getId(),
+      fileName: file.getName(),
+      fileUrl: file.getUrl(),
+      message: 'Sheet downloaded successfully!'
+    };
+    
+  } catch (error) {
+    var ui = SpreadsheetApp.getUi();
+    ui.alert('Error', 'Download failed: ' + error.toString(), ui.ButtonSet.OK);
+    
+    return {
+      success: false,
+      message: 'Download failed: ' + error.toString()
+    };
+  }
+}

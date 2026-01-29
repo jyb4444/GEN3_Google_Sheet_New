@@ -89,6 +89,7 @@ Gen3Query.prototype.graphqlQuery = function (authProvider, queryString) {
 
 Gen3Query.prototype.getAccessToken = function (authProvider) {
     const url = `${authProvider.endpoint}/user/credentials/cdis/access_token`;
+    // SpreadsheetApp.getUi().alert(url)
     const options = {
         method: 'POST',
         headers: {
@@ -122,6 +123,40 @@ Gen3Query.prototype.normalizeResponse = function (rawResponse) {
   return rawResponse; 
 };
 
+function isDataFileNode(node) {
+  if (!node) {
+    throw new Error("Node name is required");
+  }
+
+  const authProvider = getAuthProvider();
+  const apiUrl = `${authProvider.endpoint}/api/v0/submission/_dictionary/${node}`;
+
+  const accessToken = new Gen3Query(authProvider).getAccessToken(authProvider);
+
+  const options = {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json'
+    },
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(apiUrl, options);
+  const status = response.getResponseCode();
+
+  if (status !== 200) {
+    throw new Error(
+      `Failed to fetch dictionary for node '${node}'. Status: ${status}. Response: ${response.getContentText()}`
+    );
+  }
+
+  const dict = JSON.parse(response.getContentText());
+
+  // Gen3 dictionary contract: category ∈ data_file | clinical | administrative | etc.
+  return dict.category === "data_file";
+}
+
 function fetchDataByConditions(project="GEN", study, node="flow_analysis_data") {
   const authProvider = getAuthProvider();
   const query = new Gen3Query(authProvider);
@@ -137,9 +172,13 @@ function fetchDataByConditions(project="GEN", study, node="flow_analysis_data") 
   // SpreadsheetApp.getUi().alert(path)
 
   const filters = {
-      project: { code: project },
-      study: { submitter_id: study }
+      project: { code: project }
     };
+
+  if (study && study.trim() !== '') {
+    filters.study = { submitter_id: study };
+  }
+
   const graphql_query_string = processor.generateGraphqlQuery(path, filters);
   // SpreadsheetApp.getUi().alert(graphql_query_string)
 
@@ -154,5 +193,7 @@ function fetchDataByConditions(project="GEN", study, node="flow_analysis_data") 
   const properties = childCol.properties;
   const hiddenProperties = childCol.systemProperties;
 
-  return [preparedData, properties, hiddenProperties];
+  const isDataFile = isDataFileNode(node);
+
+  return [preparedData, properties, hiddenProperties, isDataFile];
 }

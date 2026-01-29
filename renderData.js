@@ -16,20 +16,61 @@ function generateParentSubmitterIdColumnName(pluralNodeName) {
   return `${singularNodeName}.submitter_id`;
 }
 
-function displayResults(node, data, properties, hiddenProperties) {
+function expandRowsByParentSubmitterIds(data, node) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return data;
+  }
+
+  const excludedCols = new Set([
+    'study.submitter_id',
+    `${node}.submitter_id`,
+    'submitter_id'
+  ]);
+
+  const allKeys = new Set();
+  data.forEach(row => Object.keys(row).forEach(k => allKeys.add(k)));
+
+  const parentSubmitterCols = Array.from(allKeys)
+    .filter(col => col.endsWith('.submitter_id') && !excludedCols.has(col))
+    .sort(); 
+
+  if (parentSubmitterCols.length === 0) {
+    return data;
+  }
+
+  const expandedRows = [];
+
+  parentSubmitterCols.forEach(activeCol => {
+    data.forEach(row => {
+      const newRow = { ...row };
+
+      parentSubmitterCols.forEach(col => {
+        if (col !== activeCol) {
+          newRow[col] = '';
+        }
+      });
+
+      expandedRows.push(newRow);
+    });
+  });
+
+  return expandedRows;
+}
+
+function displayResults(node, data, properties, hiddenProperties, isDataFile) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    
-    // if (node === "study") {
-    //   handleStudyNode(sheet, node);
-    //   return;
-    // }
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheets()[0]; 
     
     if (!data || data.length === 0) {
       Logger.log("No data available.");
       return;
     }
-    // SpreadsheetApp.getUi().alert(JSON.stringify(data))
+
+    if (isDataFile === true) {
+      data = expandRowsByParentSubmitterIds(data, node);
+    }
+    
     const columnNames = buildColumnNames(node, properties, hiddenProperties, data);
     setupSheet(sheet, columnNames, properties, hiddenProperties);
     insertData(sheet, data, columnNames);
@@ -52,51 +93,92 @@ function handleStudyNode(sheet, node) {
 function buildColumnNames(node, properties, hiddenProperties, data = []) {
   const checkHiddenProperties = new Set(hiddenProperties);
   
-  // Get visible property names from properties
-  const visibleProperties = Object.keys(properties).filter(
-    item => !checkHiddenProperties.has(item)
+  const allKeys = new Set(Object.keys(properties));
+  data.forEach(item => Object.keys(item).forEach(key => allKeys.add(key)));
+
+  const availableKeys = Array.from(allKeys).filter(key => 
+    !checkHiddenProperties.has(key) && key !== 'provenance'
   );
-  
-  // 从数据中提取实际存在的列名
-  const dataColumns = new Set();
-  data.forEach(item => {
-    Object.keys(item).forEach(key => {
-      dataColumns.add(key);
-    });
+
+  const parentIdCols = [];
+  const selfIdCols = [];
+  const normalCols = [];
+
+  availableKeys.forEach(key => {
+    const isId = key.includes('submitter_id') || key.endsWith('.code');
+    
+    if (isId) {
+      if (key.includes('.')) {
+        parentIdCols.push(key); 
+      } else {
+        selfIdCols.push(key);    
+      }
+    } else {
+      normalCols.push(key);      
+    }
   });
-  
-  // Extract and remove provenance column if it exists
-  const provenanceIndex = visibleProperties.indexOf('provenance');
-  let provenanceColumn = null;
-  if (provenanceIndex !== -1) {
-    provenanceColumn = visibleProperties.splice(provenanceIndex, 1)[0];
+
+  parentIdCols.sort((a, b) => a.localeCompare(b));
+
+  selfIdCols.sort((a, b) => a.localeCompare(b));
+
+  normalCols.sort((a, b) => a.localeCompare(b));
+
+  const finalColumns = [...parentIdCols, ...selfIdCols, ...normalCols];
+
+  const hasProvenance = allKeys.has('provenance') && !checkHiddenProperties.has('provenance');
+  if (hasProvenance) {
+    finalColumns.push('provenance');
   }
-  
-  // Separate submitter_id columns from other columns
-  const { submitterIdColumns, otherColumns } = separateSubmitterIdColumns(visibleProperties);
-  
-  // Process plural column names to "columnName.submitter_id" format
-  // const processedColumns = processPluralColumns(otherColumns);
-  const processedColumns = otherColumns;
-  
-  // 将数据中的列名加入到列名列表中
-  const dataColumnsList = Array.from(dataColumns);
-  // SpreadsheetApp.getUi().alert(JSON.stringify(dataColumnsList))
-  // SpreadsheetApp.getUi().alert(JSON.stringify(submitterIdColumns))
-  // SpreadsheetApp.getUi().alert(JSON.stringify(processedColumns))
-  // Combine all columns: data columns first, then submitter_id columns, then processed columns
-  let allProcessedColumns = [...dataColumnsList, ...processedColumns];
-  
-  // Remove duplicate column names
-  const uniqueColumns = removeDuplicateColumns(allProcessedColumns);
-  
-  // Add provenance column at the end if it exists
-  if (provenanceColumn) {
-    uniqueColumns.push(provenanceColumn);
-  }
-  
-  return uniqueColumns;
+
+  const filteredColumns = finalColumns.filter(col => col !== 'type');
+
+  return filteredColumns;
 }
+
+// function buildColumnNames(node, properties, hiddenProperties, data = []) {
+//   const checkHiddenProperties = new Set(hiddenProperties);
+  
+//   // Get visible property names from properties
+//   const visibleProperties = Object.keys(properties).filter(
+//     item => !checkHiddenProperties.has(item)
+//   );
+  
+//   const dataColumns = new Set();
+//   data.forEach(item => {
+//     Object.keys(item).forEach(key => {
+//       dataColumns.add(key);
+//     });
+//   });
+  
+//   // Extract and remove provenance column if it exists
+//   const provenanceIndex = visibleProperties.indexOf('provenance');
+//   let provenanceColumn = null;
+//   if (provenanceIndex !== -1) {
+//     provenanceColumn = visibleProperties.splice(provenanceIndex, 1)[0];
+//   }
+  
+//   // Separate submitter_id columns from other columns
+//   const { submitterIdColumns, otherColumns } = separateSubmitterIdColumns(visibleProperties);
+  
+//   // Process plural column names to "columnName.submitter_id" format
+//   // const processedColumns = processPluralColumns(otherColumns);
+//   const processedColumns = otherColumns;
+  
+//   const dataColumnsList = Array.from(dataColumns);
+//   // Combine all columns: data columns first, then submitter_id columns, then processed columns
+//   let allProcessedColumns = [...dataColumnsList, ...processedColumns];
+  
+//   // Remove duplicate column names
+//   const uniqueColumns = removeDuplicateColumns(allProcessedColumns);
+  
+//   // Add provenance column at the end if it exists
+//   if (provenanceColumn) {
+//     uniqueColumns.push(provenanceColumn);
+//   }
+  
+//   return uniqueColumns;
+// }
 
 function separateSubmitterIdColumns(columns) {
   const submitterIdColumns = [];

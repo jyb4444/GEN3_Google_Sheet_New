@@ -3,7 +3,7 @@
  * Handles fetching and caching of data dictionary from API
  */
 class DataDictionaryHandler {
-  constructor(apiUrl = "https://dev.toxdatacommons.com//api/v0/submission/_dictionary/_all") {
+  constructor(apiUrl = "https://dev.toxdatacommons.com/api/v0/submission/_dictionary/_all") {
     this.apiUrl = apiUrl;
     this._dictionaryAll = null; // Cache the dictionary once fetched
   }
